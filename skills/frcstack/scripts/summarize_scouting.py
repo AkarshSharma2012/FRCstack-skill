@@ -10,6 +10,15 @@ KINDS = {"intake_window", "fire_window", "score", "spill", "struggle", "visible_
 def number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
+def observation_status(record, superseded=()):
+    if record['id'] in superseded:
+        return 'Superseded'
+    if record['is_replay']:
+        return 'Replay'
+    if record['visibility'] != 'direct' or not record['reviewed'] or (record['kind'] == 'score' and record['outcome'] == 'unknown'):
+        return 'Unresolved'
+    return 'Eligible'
+
 def summarize(ledger):
     if ledger.get("schema") != 1 or ledger.get("program") not in {"FRC", "FTC"}:
         raise ValueError("Set schema=1 and the actual FRC/FTC program")
@@ -55,21 +64,20 @@ def summarize(ledger):
     teams = {}
     windows = {}
     for rid, record in records.items():
-        if rid in superseded:
+        status = observation_status(record, superseded)
+        if status == 'Superseded':
             continue
         team = record["team"]
         summary = teams.setdefault(team, {"reviewed_visible_scoring_events": None, "video_observed_points_lower_bound": None, "unresolved_records": 0, "excluded_replays": 0, "intake": None, "firing": None})
-        if record["is_replay"]:
+        if status == 'Replay':
             summary["excluded_replays"] += 1
             continue
-        if record["visibility"] != "direct" or not record["reviewed"]:
+        if status == 'Unresolved':
             summary["unresolved_records"] += 1
             continue
         kind = record["kind"]
         if kind == "score":
-            if record["outcome"] == "unknown":
-                summary["unresolved_records"] += 1
-            elif record["outcome"] == "scored":
+            if record["outcome"] == "scored":
                 summary["reviewed_visible_scoring_events"] = (summary["reviewed_visible_scoring_events"] or 0) + 1
                 if record.get("points") is not None:
                     summary["video_observed_points_lower_bound"] = (summary["video_observed_points_lower_bound"] or 0) + record["points"]

@@ -2,11 +2,12 @@
 """Export reviewed observation ledgers to an evidence-preserving XLSX snapshot; no video ingestion."""
 import argparse
 import json
+import math
 from pathlib import Path
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.table import Table, TableStyleInfo
-from summarize_scouting import summarize
+from summarize_scouting import summarize, observation_status
 
 UNKNOWN = 'Unknown'
 
@@ -14,9 +15,11 @@ def text(value):
     if value is None:
         return UNKNOWN
     if isinstance(value, (dict, list)):
-        return json.dumps(value, ensure_ascii=False, allow_nan=False)
+        value = json.dumps(value, ensure_ascii=False, allow_nan=False)
     if isinstance(value, bool):
         return 'Yes' if value else 'No'
+    if isinstance(value, str) and len(value.encode('utf-16-le')) // 2 > 32767:
+        raise ValueError('Cell text exceeds Excel limit; preserve the full evidence in a linked source and shorten this cell explicitly')
     return value
 
 def add_sheet(book, title, headers, rows):
@@ -41,7 +44,18 @@ def add_sheet(book, title, headers, rows):
     sheet.row_dimensions[1].height = 32
     sheet.freeze_panes = 'C2' if title == 'Teams' else 'B2'
     for index, header in enumerate(headers, 1):
-        sheet.column_dimensions[sheet.cell(1, index).column_letter].width = min(55, max(18, len(header) + 2))
+        width = min(55, max(18, len(header) + 2))
+        if header in {'Evidence', 'Description', 'Action', 'Bench Test', 'Coverage / limitations', 'Raw record'}:
+            width = 55
+        elif header in {'URL', 'Source', 'Source Url'}:
+            width = 44
+        if title == 'Readme':
+            width = 30 if index == 1 else 90
+        sheet.column_dimensions[sheet.cell(1, index).column_letter].width = width
+    for row in sheet.iter_rows(min_row=2):
+        lines = max(sum(max(1, math.ceil(len(line) / max(1, sheet.column_dimensions[cell.column_letter].width - 2)))
+                        for line in str(cell.value or '').split('\n')) for cell in row)
+        sheet.row_dimensions[row[0].row].height = min(409, max(28, lines * 14 + 8))
     if rows:
         table = Table(displayName='FRC' + title, ref=sheet.dimensions)
         table.tableStyleInfo = TableStyleInfo(name='TableStyleMedium2', showRowStripes=True)
@@ -101,8 +115,7 @@ def export_event(event: dict, ledgers: list[dict], output: Path) -> Path:
                                summary['unresolved_records'], summary['excluded_replays'], ledger['source_url']])
         superseded = {r['supersedes'] for r in ledger['observations'] if r.get('supersedes')}
         for record in ledger['observations']:
-            status = ('Superseded' if record['id'] in superseded else 'Replay' if record['is_replay'] else
-                      'Eligible' if record['visibility'] == 'direct' and record['reviewed'] else 'Unresolved')
+            status = observation_status(record, superseded)
             observation_rows.append([ledger['match_id'], record['team'], record['id'], record['kind'], record['start_s'], record['end_s'],
                                      record.get('count'), record.get('outcome'), record.get('points'), record.get('rule_ref'),
                                      record['visibility'], record['reviewed'], record['is_replay'], record.get('supersedes'), status,

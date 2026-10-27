@@ -104,4 +104,19 @@ class WorkbookTests(unittest.TestCase):
         data = event(); data['teams'].append(copy.deepcopy(data['teams'][0]))
         with self.assertRaises(ValueError): self.export(e=data)
 
+    def test_oversized_evidence_is_rejected_before_excel_truncates_it(self):
+        data = ledger(); data['observations'][0]['evidence'] = 'x' * 33000
+        with self.assertRaises(ValueError): self.export(ledgers=[data])
+
+    def test_unknown_score_outcome_is_unresolved_in_raw_and_summary(self):
+        data = ledger(); data['observations'] = [observation('unknown', 'score', 1, 1, outcome='unknown')]
+        _, book = self.export(ledgers=[data])
+        self.assertEqual(self.rows(book['Teams'])[0]['Unresolved records'], 1)
+        self.assertEqual(self.rows(book['Observations'])[0]['Status'], 'Unresolved')
+
+    def test_long_notes_have_explicit_space_in_native_excel(self):
+        _, book = self.export()
+        self.assertGreaterEqual(book['Readme'].column_dimensions['B'].width, 70)
+        self.assertGreater(book['Readme'].row_dimensions[6].height or 0, 15)
+
 if __name__ == '__main__': unittest.main()
