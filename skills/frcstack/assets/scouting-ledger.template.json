@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "program": null,
+  "season": null,
+  "event_id": null,
+  "match_id": null,
+  "source_url": null,
+  "capture": {"pipeline_status": "not_connected", "frames_received": 0, "observed_intervals_s": [], "unknown_intervals_s": [], "latency_samples_s": []},
+  "observations": [],
+  "hypotheses": [],
+  "corrections": []
+}

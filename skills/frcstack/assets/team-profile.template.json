@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "program": null,
+  "team_number": null,
+  "season": null,
+  "project_name": null,
+  "cad": {
+    "platform": "Onshape",
+    "document_url": null,
+    "workspace_url": null,
+    "baseline_version": null,
+    "capability_status": "untested",
+    "part_libraries": [],
+    "frc_library_discovery_url": "https://www.frcdesign.org/resources/frcdesignlib/",
+    "program_library_discovery_url": "https://www.onshape.com/en/education/first-robotics",
+    "library_access_status": "untested",
+    "component_provenance_fields": ["manufacturer", "part_number", "configuration", "source_url", "document_id", "element_id", "version_or_microversion", "drawing_revision", "checked_date", "interface_verification", "mass_source"]
+  },
+  "standards": {"units": null, "datum_and_axes": null, "part_number_scheme": null, "hardware_ecosystem": [], "verified_vendor_parts": []},
+  "manufacturing": {"available_processes": [], "materials": [], "measured_process_tolerances": [], "stock_sizes": []},
+  "design_inputs": {"measured_interfaces": [], "load_cases": [], "mass_budget": null, "cost_budget": null, "performance_targets": [], "unknowns": []},
+  "rules": {"manual_url": null, "revision": null, "updates_checked": null, "applicable_rule_ids": []},
+  "scouting": {"video_source": "YouTube live broadcast", "stream_url": null, "event_id": null, "target_team_ids": [], "match_id": null, "capture_duration_s": null, "pipeline_status": "not_connected", "accuracy_thresholds": null}
+}

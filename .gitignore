@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+.frcstack/
+.autopilot/
+.superpowers/
+node_modules/
+dist/
+*.zip
+*.xlsx
+*.mp4
+.env*
+*.key
+*.pem

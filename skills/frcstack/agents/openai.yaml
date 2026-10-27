@@ -1,0 +1,6 @@
+interface:
+  display_name: "FRCstack"
+  short_description: "Onshape robot design and evidence-backed video scouting"
+  default_prompt: "Use $frcstack to create Onshape CAD or an evidence-backed scouting workbook, checking the available tools first."
+policy:
+  allow_implicit_invocation: true
