@@ -2,6 +2,8 @@
 
 Apply checks appropriate to the component and process. Record actual evidence, assumptions, and missing checks rather than checking boxes without executing them.
 
+Use the [team-grounded create/debug/review workflow](team-workflows.md) to connect these checks to documented engineering decisions, exact interfaces and the team's actual manufacturing resources.
+
 - Geometry: units, reference planes, closed/manifold solids where required, hole sizes/spacing, shaft/bearing fits, stock thickness, edge distances, assembly constraints, and accessible fasteners.
 - Motion: full intended sweep, hard stops, collisions, belt/chain paths and tensioning, cable bend/service loops, game-piece path, retention, and clearance under plausible deflection. Static interference and a few sampled poses are not proof of continuous collision-free motion.
 - Manufacturing: the team's measured process capability, cutting-tool radius/access, sheet bend allowance/radius, print orientation and anisotropy, support/removal access, inserts, tap engagement, and tolerances appropriate to the actual machine. Do not prescribe one universal printer tolerance.
