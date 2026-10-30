@@ -43,6 +43,8 @@ An original [FeatureScript fixture and native test workflow](skills/frcstack/ref
 
 Illustrative role colors also regenerate natively and survive named assembly STEP export; colors do not assign physical materials or prove a team's exact finish.
 
+The [component assembly helper](skills/frcstack/references/component-assembly.md) checks pinned local STEP sources, explicit placements, exported geometry and interferences between instances. The [team workflow cases](skills/frcstack/references/team-workflows.md) and [generator gates](skills/frcstack/references/generators.md) guide architecture, debugging and independent review. These additions do not supply a completed robot or an Onshape connection.
+
 **Not bundled or connected:** a live YouTube capture service, trained robot/game-piece tracker, continuous 3D inference, an Onshape connector, account credentials, or an accuracy benchmark. An agent uses genuinely available tools or reports the missing capability. The skill cannot reveal hidden motors, exact hopper capacity, loads or unseen geometry from broadcast footage. It never promises a 100%-accurate replica. `latest` records the most recent publicly evidenced robot iteration and check date, not unseen private work.
 
 FRCDesignLib is a community-maintained component library, normally used through FRCDesignApp. Exact configurations, critical interfaces, units and source versions require checking. FTC uses its own program/vendor libraries. Library presence does not certify current rule compliance or manufacturing readiness. See [CAD workflow](skills/frcstack/references/onshape.md) and [sources](skills/frcstack/references/sources.md).
