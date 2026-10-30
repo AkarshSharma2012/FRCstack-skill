@@ -317,60 +317,9 @@ def verify_solid_pair(solid_a, solid_b, tol_mm3: float = 1e-5) -> bool:
 
 
 def _bijective_roundtrip(orig_solids, rt_solids, tol_mm3: float = 1e-5) -> tuple[bool, list]:
-    """Bijective geometry-only matching of orig to rt solids. Order-independent.
-
-    STEP body enumeration order is not an identity contract; this function
-    matches solids by actual geometry regardless of order.
-
-    instance_identity_roundtrip_verified is always False (geometry-only).
-    Returns (roundtrip_passed, results_list).
-    """
-    n, m = len(orig_solids), len(rt_solids)
-    results: list[dict] = []
-    if n != m:
-        results.append({"error": f"solid count mismatch: original={n} roundtrip={m}"})
-        return False, results
-
-    # Build n×n boolean match matrix; catch per-cell verify errors conservatively
-    mat: list[list[bool]] = []
-    for orig in orig_solids:
-        row: list[bool] = []
-        for rt in rt_solids:
-            try:
-                row.append(verify_solid_pair(orig, rt, tol_mm3))
-            except Exception:
-                row.append(False)
-        mat.append(row)
-
-    # Greedy bipartite assignment: for each orig find first unused rt that matches
-    assignment = [-1] * n
-    used: set[int] = set()
-    for i in range(n):
-        for j in range(n):
-            if j not in used and mat[i][j]:
-                assignment[i] = j
-                used.add(j)
-                break
-    # Assign any unused rt to unmatched orig (for reporting)
-    for i in range(n):
-        if assignment[i] == -1:
-            for j in range(n):
-                if j not in used:
-                    assignment[i] = j
-                    used.add(j)
-                    break
-
-    for i in range(n):
-        j = assignment[i]
-        results.append({
-            "solid_orig_index": i,
-            "solid_rt_index": j,
-            "passed": mat[i][j] if j >= 0 else False,
-            "original_volume_mm3": orig_solids[i].Volume(),
-            "roundtrip_volume_mm3": rt_solids[j].Volume() if j >= 0 else None,
-        })
-
-    return all(r["passed"] for r in results), results
+    """Order-independent geometry matching; semantic instance identity unverified."""
+    from solid_matching import match_solids
+    return match_solids(orig_solids, rt_solids, verify_solid_pair, tol_mm3)
 
 
 # ---------------------------------------------------------------------------
