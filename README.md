@@ -37,7 +37,11 @@ Slash support is host-dependent. These route agent workflows; they are not unive
 
 ## What is implemented, and what is not
 
-Included: installable instructions/references/templates, backed-up installer, observation-ledger validation, XLSX export, and automated local tests.
+Included: installable instructions/references/templates, backed-up installer, observation-ledger validation, XLSX export, optional CPU CAD generation/STEP inspection, and automated local tests. The CAD helper currently builds an original roller test fixture, not a full robot. See [free CAD references and local execution](skills/frcstack/references/free-resources.md).
+
+An original [FeatureScript fixture and native test workflow](skills/frcstack/references/native-fixture.md) are included. Native Onshape tests executed default/changed-parameter regeneration, invalid-input refusal and a four-part revolute assembly animation; exported solids were independently checked against the local kernel. These bounded integration tests are not a completed robot, FEA result or installed Onshape connection.
+
+Illustrative role colors also regenerate natively and survive named assembly STEP export; colors do not assign physical materials or prove a team's exact finish.
 
 **Not bundled or connected:** a live YouTube capture service, trained robot/game-piece tracker, continuous 3D inference, an Onshape connector, account credentials, or an accuracy benchmark. An agent uses genuinely available tools or reports the missing capability. The skill cannot reveal hidden motors, exact hopper capacity, loads or unseen geometry from broadcast footage. It never promises a 100%-accurate replica. `latest` records the most recent publicly evidenced robot iteration and check date, not unseen private work.
 
@@ -62,3 +66,5 @@ python -m unittest discover -s tests -v
 ```
 
 Tests use synthetic data, not real competition results. Keep private team profiles, source CAD, stream captures, secrets and generated scouting reports in your project, not the skill repository. No telemetry or automatic uploads. MIT licensed; linked third-party CAD and media retain their own licenses.
+
+CAD tests use real kernel geometry when the optional dependency is installed; otherwise they are explicitly skipped. For a dedicated CAD test environment, install both `requirements.txt` and `requirements-cad.txt`, then run the same Python test command. Local test-fixture dimensions are original and not manufacturer specifications. No external source CAD is required by CI or bundled in this package.

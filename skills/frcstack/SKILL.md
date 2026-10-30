@@ -59,7 +59,11 @@ For `latest`, check current public team/event evidence and record the as-of date
 
 ## Create and improve Onshape CAD
 
+If the user has no source models, read [free references and local execution](references/free-resources.md). Select appropriate public CAD and build locally testable geometry where useful; do not block every task on a user-supplied model. The optional CPU helper executes real solids/STEP checks but does not substitute for native Onshape verification or establish third-party training permission.
+
 Use [Onshape CAD](references/onshape.md) and [engineering checks](references/engineering.md). Build editable parametric Part Studios and assemblies in a verified user-authorized document/workspace. Generate FeatureScript when appropriate; assemblies and document operations require separate host/API/UI capabilities. Version changes, measure geometry, verify motion/clearances, and produce drawings/BOM/exports when requested.
+
+For a bounded execution smoke test, use the original [native fixture workflow](references/native-fixture.md) and its FeatureScript asset. It has executed nominal/variant regeneration, an invalid-input refusal, independent STEP geometry checks and a native revolute animation. This is integration evidence for a test fixture, not proof that the installed host can edit CAD or generate a complete robot; verify capabilities on the current host.
 
 For FRC purchased components, start with FRCDesignLib through FRCDesignApp and the team's approved manufacturer libraries. It is a community-maintained library, not a FIRST-authored guarantee of correctness or legality. Insert/derive exact part numbers and configurations; verify critical interfaces against manufacturer drawings and record source versions. Create custom parametric parts around those interfaces, not approximate substitutes for catalog components. For FTC, resolve the separate FTC library linked by Onshape and the team's actual vendors rather than assuming FRC hardware fits.
 

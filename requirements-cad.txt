@@ -1,0 +1,2 @@
+# Optional CPU CAD kernel, separate from the lightweight skill/scouting install.
+cadquery==2.8.0

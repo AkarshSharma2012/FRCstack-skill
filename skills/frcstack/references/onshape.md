@@ -30,6 +30,12 @@ For each purchased component:
 
 If the exact part is missing, use manufacturer CAD or a dimensioned model from verified drawings and label its source. Do not silently replace it with a nearby part or fabricated dimensions. Video reconstruction can use an explicitly uncertain proxy until identity/dimensions are confirmed; that proxy must not enter the fabrication BOM as a verified catalog part.
 
+### Executed manufacturer-reference case
+
+The manufacturer [Swerve X2 catalog](https://wcproducts.com/products/swerve-x2) supplies [WCP-1704 STEP](https://wcproducts.info/files/frc/cad/WCP-1704.step) and its [dimension drawing](https://wcproducts.info/files/frc/drawings/Web-WCP-1704.pdf). A 2026-10-28 execution downloaded the source, checked one valid solid, imported it unscaled into a separately named reference Part Studio, exported it, and compared both directional BRep differences with the original: zero reported difference. Source header: WCP-1704 Rev1, 2024-10-16; drawing release: 2024-10-25. No third-party model is bundled here.
+
+Partial interface checks established 146.05 mm plan bounds, 12.7 mm pitch on a five-hole row, 6.35 mm row-to-edge offset, and major parallel faces 7.9375 mm apart (drawing rounds to 7.94). The full thickness envelope is 8.73125 mm because of raised details. Do not scale a part to make its bounding box equal nominal stock thickness. This did not verify every drawing dimension, threads, actual hardware tolerance, a configured complete module or a team's custom variant. Reference import is not generated native feature history or a completed robot.
+
 ## Model
 
 Prefer a readable native parametric feature tree: named variables, constrained sketches, explicit datums, functional interfaces, simple solid features, repeated geometry via patterns, and cosmetic edge treatment last. Keep critical interfaces tied to measured/vendor dimensions with explicit units. Parameterize variants without adding unnecessary configurable complexity.
