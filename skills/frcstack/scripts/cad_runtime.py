@@ -138,10 +138,19 @@ def inspect_step(path: Path, max_bytes: int = 128 * 1024 * 1024, progress: bool 
         solids = model.Solids()
         if not solids:
             raise ValueError("No solids were imported")
+        imported_at = time.perf_counter()
         if progress:
             print(f"Checking {len(solids)} solids from {len(roots)} imported roots...", file=sys.stderr, flush=True)
-        validity = [s.isValid() and math.isfinite(s.Volume()) and s.Volume() > 0 for s in solids]
+        validity, volumes = [], []
+        for index, solid in enumerate(solids, 1):
+            volume = solid.Volume()
+            volumes.append(volume)
+            validity.append(solid.isValid() and math.isfinite(volume) and volume > 0)
+            if progress and (index % 50 == 0 or index == len(solids)):
+                print(f"Checked {index}/{len(solids)} solids...", file=sys.stderr, flush=True)
+        checked_at = time.perf_counter()
         box = bounds(model)
+        bounded_at = time.perf_counter()
     except Exception as error:
         raise ValueError(f"STEP import/inspection failed: {error}") from error
     digest = hashlib.sha256()
@@ -151,7 +160,11 @@ def inspect_step(path: Path, max_bytes: int = 128 * 1024 * 1024, progress: bool 
     return {"schema": 1, "file_name": path.name, "sha256": digest.hexdigest(),
             "bytes": path.stat().st_size, "imported_root_count": len(roots), "solid_count": len(solids),
             "all_solids_valid": all(validity), "invalid_solid_indices": [i for i, v in enumerate(validity) if not v],
-            "bounds_mm": box, "sum_solid_volumes_mm3": math.fsum(s.Volume() for s in solids),
+            "bounds_mm": box, "sum_solid_volumes_mm3": math.fsum(volumes),
+            "phase_elapsed_seconds": {"kernel_and_step_import": imported_at - started,
+                                      "solid_validity_and_volume": checked_at - imported_at,
+                                      "overall_bounds": bounded_at - checked_at,
+                                      "source_hash": time.perf_counter() - bounded_at},
             "inspection_elapsed_seconds": time.perf_counter() - started,
             "kernel": "CadQuery " + cq.__version__, "units": "mm after STEP reader conversion",
             "scope": "BRep import validity, bounds and summed solid volumes; overlaps not subtracted",
