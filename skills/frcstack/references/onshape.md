@@ -30,6 +30,8 @@ For each purchased component:
 
 If the exact part is missing, use manufacturer CAD or a dimensioned model from verified drawings and label its source. Do not silently replace it with a nearby part or fabricated dimensions. Video reconstruction can use an explicitly uncertain proxy until identity/dimensions are confirmed; that proxy must not enter the fabrication BOM as a verified catalog part.
 
+For a local intermediate placement check, use the [exact-source component helper](component-assembly.md). It requires explicit source hashes and transforms; it does not replace native component insertion, verified configuration, appearance or assembly mates.
+
 ### Executed manufacturer-reference case
 
 The manufacturer [Swerve X2 catalog](https://wcproducts.com/products/swerve-x2) supplies [WCP-1704 STEP](https://wcproducts.info/files/frc/cad/WCP-1704.step) and its [dimension drawing](https://wcproducts.info/files/frc/drawings/Web-WCP-1704.pdf). A 2026-10-28 execution downloaded the source, checked one valid solid, imported it unscaled into a separately named reference Part Studio, exported it, and compared both directional BRep differences with the original: zero reported difference. Source header: WCP-1704 Rev1, 2024-10-16; drawing release: 2024-10-25. No third-party model is bundled here.
@@ -39,6 +41,8 @@ Partial interface checks established 146.05 mm plan bounds, 12.7 mm pitch on a f
 ## Model
 
 Prefer a readable native parametric feature tree: named variables, constrained sketches, explicit datums, functional interfaces, simple solid features, repeated geometry via patterns, and cosmetic edge treatment last. Keep critical interfaces tied to measured/vendor dimensions with explicit units. Parameterize variants without adding unnecessary configurable complexity.
+
+Use the [generator selection and execution gates](generators.md) for shafts, spacers, transmissions, tube and custom gears. Candidate discovery never implies installation, correct configuration, successful regeneration or verified strength.
 
 Use FeatureScript for reusable parameterized features when it reduces fragile manual work. Read the current FeatureScript language/library docs and match the source document's language and import versions. Resolve queries robustly instead of assuming transient face/edge order. Test nominal and boundary parameter cases in Onshape. A JavaScript/Python syntax check does not compile FeatureScript.
 
