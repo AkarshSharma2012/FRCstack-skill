@@ -63,6 +63,8 @@ Apply the [team-grounded workflows](references/team-workflows.md) when selecting
 
 For dimensioned custom rails and plates, use the [structural-part generators](references/structural-parts.md). Supply explicit dimensions and preserve design assumptions; only the rectangular-tube generator has executed native Onshape cases so far. Local geometry checks do not establish native history or whole-robot correctness.
 
+For an original six-rail chassis layout and cut list, use the [proposed chassis workflow](references/chassis.md). Native nominal/variant geometry and appearance cases have executed, but the layout is not a complete robot or an exact team reconstruction. Do not infer unmodeled mounts or fastening details.
+
 If the user has no source models, read [free references and local execution](references/free-resources.md). Select appropriate public CAD and build locally testable geometry where useful; do not block every task on a user-supplied model. The optional CPU helper executes real solids/STEP checks but does not substitute for native Onshape verification or establish third-party training permission.
 
 Use [Onshape CAD](references/onshape.md) and [engineering checks](references/engineering.md). Build editable parametric Part Studios and assemblies in a verified user-authorized document/workspace. Generate FeatureScript when appropriate; assemblies and document operations require separate host/API/UI capabilities. Version changes, measure geometry, verify motion/clearances, and produce drawings/BOM/exports when requested.

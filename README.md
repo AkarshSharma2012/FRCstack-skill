@@ -37,7 +37,7 @@ Slash support is host-dependent. These route agent workflows; they are not unive
 
 ## What is implemented, and what is not
 
-Included: installable instructions/references/templates, backed-up installer, observation-ledger validation, XLSX export, optional CPU CAD generation/STEP inspection, and automated local tests. The CAD helper currently builds an original roller test fixture, not a full robot. See [free CAD references and local execution](skills/frcstack/references/free-resources.md).
+Included: installable instructions/references/templates, backed-up installer, observation-ledger validation, XLSX export, optional CPU CAD generation/STEP inspection, and automated local tests. CAD execution includes original stock parts, a roller fixture, exact-source purchased-part placement, and a [proposed six-rail chassis with cut list and verified STEP export](skills/frcstack/references/chassis.md). These are bounded components/layouts, not a completed robot. See [free CAD references and local execution](skills/frcstack/references/free-resources.md).
 
 An original [FeatureScript fixture and native test workflow](skills/frcstack/references/native-fixture.md) are included. Native Onshape tests executed default/changed-parameter regeneration, invalid-input refusal and a four-part revolute assembly animation; exported solids were independently checked against the local kernel. These bounded integration tests are not a completed robot, FEA result or installed Onshape connection.
 
