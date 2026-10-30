@@ -5,6 +5,10 @@ they cannot yield a perfect matching, remaining pairs are tested too, so the
 heuristic never decides acceptance. The supplied Boolean verifier does that.
 Typical separated layouts are sparse; coincident bodies or failed matches can
 require quadratic work/storage. No exact bounding boxes or recursive searches.
+
+Verifier calls are lazy: each (i, j) edge is evaluated at most once across the
+whole match_solids call. BFS augmenting paths stop when a free right node is
+reachable, avoiding unused candidate checks after a valid path is found.
 """
 from bisect import bisect_left, bisect_right
 from collections import deque
@@ -42,8 +46,8 @@ def _properties(shape):
     return volume, tuple(coords)
 
 
-def _maximum_matching(adjacency, count):
-    """Iterative augmenting paths on verified edges; no recursion depth limit."""
+def _maximum_matching(adjacency, count, verify_edge=None):
+    """Iterative augmenting paths, optionally verifying candidate edges lazily."""
     left, right = {}, {}
     for root in range(count):
         queue, seen_left, parent_right = deque([root]), {root}, {}
@@ -52,6 +56,8 @@ def _maximum_matching(adjacency, count):
             i = queue.popleft()
             for j in adjacency[i]:
                 if j in parent_right:
+                    continue
+                if verify_edge is not None and not verify_edge(i, j):
                     continue
                 parent_right[j] = i
                 if j not in right:
@@ -92,47 +98,69 @@ def match_solids(original, roundtrip, verify_pair, tol_mm3=1e-5):
     indexed = sorted((p[1][0], j) for j, p in enumerate(rp) if p[1] is not None)
     xs = [x for x, _ in indexed]
     unknown_centers = [j for j, p in enumerate(rp) if p[1] is None]
-    adjacency, tested = [[] for _ in original], set()
+
+    cache = {}
     errors, error_count = [], 0
 
-    def evaluate(i, j):
+    def check(i, j):
         nonlocal error_count
-        if (i, j) in tested:
-            return
-        tested.add((i, j))
+        if (i, j) in cache:
+            return cache[(i, j)]
         try:
-            passed = verify_pair(original[i], roundtrip[j], tol)
-            if type(passed) is not bool:
+            result = verify_pair(original[i], roundtrip[j], tol)
+            if type(result) is not bool:
                 raise TypeError('verifier must return bool')
-            if passed:
-                adjacency[i].append(j)
+            cache[(i, j)] = result
+            return result
         except Exception as error:
             error_count += 1
             if len(errors) < 32:
-                errors.append({'original_index': i, 'roundtrip_index': j, 'error': str(error)})
+                errors.append({'original_index': i, 'roundtrip_index': j,
+                                'error': str(error)})
+            cache[(i, j)] = False
+            return False
 
-    for i, (volume, center) in enumerate(op):
+    def build_shortlist(i):
+        volume, center = op[i]
         if center is None:
-            candidates = range(m)
-        else:
-            lo, hi = bisect_left(xs, center[0]-50), bisect_right(xs, center[0]+50)
-            candidates = sorted([j for _, j in indexed[lo:hi]] + unknown_centers)
-        for j in candidates:
+            # No spatial info: conservative full enumeration by index.
+            return list(range(m))
+        lo = bisect_left(xs, center[0] - 50)
+        hi = bisect_right(xs, center[0] + 50)
+        cands = set(j for _, j in indexed[lo:hi]) | set(unknown_centers)
+        filtered = []
+        for j in cands:
             rv, rc = rp[j]
-            if center is not None and rc is not None:
-                if any(abs(a-b) > 50 for a, b in zip(center, rc)):
-                    continue
-                if abs(volume-rv) > max(tol, .01 * max(volume, rv)):
-                    continue
-            evaluate(i, j)
-    matched = _maximum_matching(adjacency, n)
+            if rc is not None and any(abs(a - b) > 50 for a, b in zip(center, rc)):
+                continue
+            if rc is not None and abs(volume - rv) > max(tol, 0.01 * max(volume, rv)):
+                continue
+            dist2 = (sum((a - b) ** 2 for a, b in zip(center, rc))
+                     if rc is not None else float('inf'))
+            filtered.append((dist2, abs(volume - rv), j))
+        filtered.sort()
+        return [j for _, _, j in filtered]
+
+    shortlists = [build_shortlist(i) for i in range(n)]
+
+    matched = _maximum_matching(shortlists, n, check)
+
     if len(matched) != n:
-        # Exact fallback: preserve the verifier's tolerance semantics even for
-        # tiny bodies or asymmetric shapes with a shifted center of mass.
+        # Fallback: extend each candidate list to all rt indices (shortlist first,
+        # then remaining sorted by volume difference and index). Cached results are
+        # reused so no (i, j) edge is verified twice across the whole call. Prior
+        # greedy assignments are cleared so augmenting paths can reassign freely.
+        shortlist_sets = [set(sl) for sl in shortlists]
+        full_candidates = []
         for i in range(n):
-            for j in range(m):
-                evaluate(i, j)
-        matched = _maximum_matching(adjacency, n)
+            vol_i = op[i][0]
+            remaining = sorted(
+                (j for j in range(m) if j not in shortlist_sets[i]),
+                key=lambda j, v=vol_i: (abs(v - rp[j][0]), j),
+            )
+            full_candidates.append(shortlists[i] + remaining)
+        matched = _maximum_matching(full_candidates, n, check)
+
     passed = len(matched) == n
     results = []
     for i in range(n):
@@ -142,6 +170,6 @@ def match_solids(original, roundtrip, verify_pair, tol_mm3=1e-5):
                   'roundtrip_volume_mm3': rp[j][0] if j is not None else None}
         if not passed and i == 0 and error_count:
             record.update(verifier_errors=errors, verifier_error_count=error_count,
-                          omitted_verifier_error_count=max(0, error_count-len(errors)))
+                          omitted_verifier_error_count=max(0, error_count - len(errors)))
         results.append(record)
     return passed, results

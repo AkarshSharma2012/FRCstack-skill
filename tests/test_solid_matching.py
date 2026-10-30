@@ -77,6 +77,42 @@ class LogicTests(unittest.TestCase):
         self.assertEqual(rows[0]['verifier_error_count'],1)
         self.assertIn('Boolean failed',rows[0]['verifier_errors'][0]['error'])
 
+    @unittest.skipUnless(importlib.util.find_spec('cadquery'),'optional CadQuery unavailable')
+    def test_lazy_nearby_equal_boxes_exactly_two_verifier_calls(self):
+        # Two boxes 20 mm apart, both within the 50 mm proximity window.
+        # With reversed candidate order, a greedy-eager approach would make 4
+        # calls; lazy BFS finds a perfect match after exactly 2 calls.
+        import cadquery as cq
+        a = cq.Workplane().box(2,3,4).val()
+        b = a.translate((20,0,0))
+        x, y = b.copy(), a.copy()
+        calls = []
+        def verify(u, v, t):
+            calls.append((id(u), id(v)))
+            return cr.verify_solid_pair(u,v,t)
+        passed, rows = sm.match_solids([a, b], [x, y], verify)
+        self.assertTrue(passed)
+        # Lazy evaluation must find both correct mates with exactly 2 calls.
+        self.assertEqual(len(calls), 2, f'expected 2 verifier calls, got {len(calls)}: {calls}')
+
+    def test_lazy_fallback_reassigns_and_caches_each_edge_once(self):
+        # Both shortlists contain only x; fallback must move a from x to y
+        # so b can take x. A permissive tiny-body oracle isolates graph logic.
+        a, b = Centered(1e-8,0), Centered(2e-8,0)
+        x, y = Centered(1e-8,0), Centered(2e-8,500)
+        oracle = {(id(a), id(x)), (id(a), id(y)), (id(b), id(x))}
+        calls = []
+        def verify(u, v, t):
+            key = (id(u), id(v))
+            calls.append(key)
+            return key in oracle
+        passed, rows = sm.match_solids([a, b], [x, y], verify)
+        self.assertTrue(passed)
+        self.assertEqual([r['solid_rt_index'] for r in rows],[1,0])
+        # Each distinct (i, j) pair must be evaluated at most once.
+        self.assertEqual(len(calls), len(set(calls)),
+                         f'duplicate verifier calls detected: {calls}')
+
 
 @unittest.skipUnless(importlib.util.find_spec('cadquery'),'optional CadQuery unavailable')
 class KernelTests(unittest.TestCase):
