@@ -80,7 +80,8 @@ class HandRuntimeInputValidation(unittest.TestCase):
         self.assertIn("open",    hr._VALID_POSES)
         self.assertIn("partial", hr._VALID_POSES)
         self.assertIn("closed",  hr._VALID_POSES)
-        self.assertEqual(len(hr._VALID_POSES), 3)
+        self.assertIn("pinch",   hr._VALID_POSES)
+        self.assertEqual(len(hr._VALID_POSES), 4)
 
     def test_part_color_map_covers_21_parts(self):
         hr = self._import()

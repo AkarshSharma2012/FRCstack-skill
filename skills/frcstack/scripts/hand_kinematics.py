@@ -280,6 +280,16 @@ def pose(name: str) -> dict:
             "thumb_yaw": -50.0, "thumb_opposition": 45.0,
             "thumb_mcp": 60.0,  "thumb_ip": 45.0,
         },
+        # Thumb-index pad pinch.  Found by constrained search (capsule clearance
+        # proxy) then checked with exact B-rep all-pair Booleans: 0 interference,
+        # tip gap ~10.5 mm, each distal pad normal within ~12 deg of the pinch
+        # line.  Other fingers stay open.  Sampled pose, NOT a grasp-force test.
+        "pinch": {
+            **{j: 0.0 for j in _JOINT_ORDER},
+            "index_spread": -12.0, "index_mcp": 28.0, "index_pip": 81.0, "index_dip": 77.0,
+            "thumb_yaw": -67.0, "thumb_opposition": 20.0,
+            "thumb_mcp": 3.0, "thumb_ip": 3.0,
+        },
     }
     if name not in _POSES:
         raise ValueError(f"Unknown pose '{name}'. Available: {list(_POSES.keys())}")

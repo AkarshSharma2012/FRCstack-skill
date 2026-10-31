@@ -144,7 +144,7 @@ def _export_step(cq, named_parts: list[tuple[str, object]], step_path: Path) -> 
 # Core API
 # ---------------------------------------------------------------------------
 
-_VALID_POSES = ("open", "partial", "closed")
+_VALID_POSES = ("open", "partial", "closed", "pinch")
 
 def build_hand_export(pose_name: str, output: "Path | str") -> dict:
     """
@@ -152,7 +152,7 @@ def build_hand_export(pose_name: str, output: "Path | str") -> dict:
 
     Parameters
     ----------
-    pose_name : str  -- one of 'open', 'partial', 'closed'
+    pose_name : str  -- one of 'open', 'partial', 'closed', 'pinch'
     output    : Path -- fresh (non-existent) output directory
 
     Returns the validation dict (same content as validation.json).

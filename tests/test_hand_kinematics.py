@@ -311,7 +311,7 @@ class TestPoseAPI(unittest.TestCase):
             self.assertEqual(len(pose(n)), 20)
 
     def test_unknown_raises(self):
-        self.assertRaises(ValueError, pose, "pinch")
+        self.assertRaises(ValueError, pose, "power_grasp_unimplemented")
 
     def test_fresh_copy(self):
         p1 = pose("partial"); p1["index_mcp"] = 9999.0
