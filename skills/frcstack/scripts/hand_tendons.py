@@ -140,11 +140,15 @@ def _strand_travel_mm(M: np.ndarray) -> np.ndarray:
     return smax - smin
 
 
-def spool_radii_mm(routing: str = "idler") -> np.ndarray:
+def spool_radii_mm(routing: str = "idler", r_min: float = None, r_max: float = None) -> np.ndarray:
     """Per-actuator drum radius sized to TARGET_SPAN_DEG, clamped to printable range."""
     travel = _strand_travel_mm(coupling_matrix(routing))
     r = travel / math.radians(TARGET_SPAN_DEG)
-    return np.clip(r, SPOOL_R_MIN_MM, SPOOL_R_MAX_MM)
+    lo = SPOOL_R_MIN_MM if r_min is None else r_min
+    hi = SPOOL_R_MAX_MM if r_max is None else r_max
+    if not (0 < lo <= hi):
+        raise ValueError("invalid spool radius clamp")
+    return np.clip(r, lo, hi)
 
 
 def actuator_angles_deg(q_deg, routing: str = "idler") -> np.ndarray:
