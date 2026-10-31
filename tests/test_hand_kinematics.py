@@ -88,25 +88,25 @@ class TestJointSpecsExactEdges(unittest.TestCase):
 
 class TestMiddleFingerZeroTip(unittest.TestCase):
     """
-    All-zero: middle root=(-10,43,10), carrier Y+8, prox Y+42, mid Y+27, dist Y+20
-    tip = (-10, 43+8+42+27+20, 10) = (-10, 140, 10)
+    All-zero: middle root=(-10,43,10), carrier Y+12, prox Y+42, mid Y+27, dist Y+20
+    tip = (-10, 43+12+42+27+20, 10) = (-10, 144, 10)
     """
     def test_tip(self):
         tip = forward_kinematics(_zero())["tips_mm"]["middle"]
         self.assertAlmostEqual(tip[0], -10.0, places=5)
-        self.assertAlmostEqual(tip[1], 140.0, places=5)
+        self.assertAlmostEqual(tip[1], 144.0, places=5)
         self.assertAlmostEqual(tip[2],  10.0, places=5)
 
 
 class TestThumbZeroTip(unittest.TestCase):
     """
     All-zero: root=(-43,-15,10), base=Rz(55deg).
-    Local-Y travel = 8+24+30+22 = 84 mm along Rz(55) Y axis.
+    Local-Y travel = 12+24+30+22 = 88 mm along Rz(55) Y axis.
     World direction of local +Y after Rz(55) = (-sin55, cos55, 0).
     """
     def test_tip(self):
         r55 = math.radians(55.0)
-        total = 8 + 24 + 30 + 22  # = 84
+        total = 12 + 24 + 30 + 22  # = 88
         exp_x = -43.0 + total * (-math.sin(r55))
         exp_y = -15.0 + total * ( math.cos(r55))
         tip = forward_kinematics(_zero())["tips_mm"]["thumb"]
@@ -117,13 +117,13 @@ class TestThumbZeroTip(unittest.TestCase):
 
 class TestIndexSpread15(unittest.TestCase):
     """
-    spread=15: root=(-31,43,10), Rz(15). Total Y=8+38+25+18=89.
+    spread=15: root=(-31,43,10), Rz(15). Total Y=12+38+25+18=93.
     local +Y -> world (-sin15, cos15, 0).
     """
     def test_tip(self):
         ang = _zero(); ang["index_spread"] = 15.0
         tip = forward_kinematics(ang)["tips_mm"]["index"]
-        r = math.radians(15.0); total = 89
+        r = math.radians(15.0); total = 93
         self.assertAlmostEqual(tip[0], -31.0 + total*(-math.sin(r)), places=4)
         self.assertAlmostEqual(tip[1],  43.0 + total*( math.cos(r)), places=4)
         self.assertAlmostEqual(tip[2],  10.0,                         places=4)
@@ -131,14 +131,14 @@ class TestIndexSpread15(unittest.TestCase):
 
 class TestIndexMCP90(unittest.TestCase):
     """
-    index MCP=90: after carrier (Y=43+8=51), Rx(90) rotates local +Y to world +Z.
-    Remaining 38+25+18=81 mm adds to Z. tip=(-31, 51, 10+81=91).
+    index MCP=90: after carrier (Y=43+12=55), Rx(90) rotates local +Y to world +Z.
+    Remaining 38+25+18=81 mm adds to Z. tip=(-31, 55, 10+81=91).
     """
     def test_tip(self):
         ang = _zero(); ang["index_mcp"] = 90.0
         tip = forward_kinematics(ang)["tips_mm"]["index"]
         self.assertAlmostEqual(tip[0], -31.0, places=4)
-        self.assertAlmostEqual(tip[1],  51.0, places=4)
+        self.assertAlmostEqual(tip[1],  55.0, places=4)
         self.assertAlmostEqual(tip[2],  91.0, places=4)
 
 
@@ -274,7 +274,7 @@ class TestHandDimensions(unittest.TestCase):
         d = hand_dimensions()
         self.assertEqual(d["palm_width_mm"], 90)
         self.assertEqual(d["palm_length_mm"], 86)
-        self.assertEqual(d["carrier_length_mm"], 8)
+        self.assertEqual(d["carrier_length_mm"], 12)
 
     def test_all_five_fingers(self):
         d = hand_dimensions()

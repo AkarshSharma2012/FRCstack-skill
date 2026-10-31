@@ -19,7 +19,7 @@ Transform chain (per finger, generic)
 --------------------------------------
   base     = T(root) * Rz(base_yaw)        # fixed palm attachment
   carrier  = base   * Rz(q0)               # spread/yaw DOF
-  proximal = carrier * T(0,8,0) * Rx(q1)
+  proximal = carrier * T(0,12,0) * Rx(q1)
   middle   = proximal* T(0,L_prox,0) * Rx(q2)
   distal   = middle  * T(0,L_mid,0)  * Rx(q3)
   tip      = distal  * T(0,L_dist,0)
@@ -34,7 +34,7 @@ import numpy as np
 # Constants
 # ---------------------------------------------------------------------------
 
-_CARRIER_LEN = 8  # mm, common to all fingers
+_CARRIER_LEN = 12  # mm, common to all fingers
 
 _LONG_SEGS = {          # (prox_mm, mid_mm, dist_mm)
     "index":  (38, 25, 18),
