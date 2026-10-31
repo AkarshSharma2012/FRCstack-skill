@@ -77,7 +77,7 @@ def _make_palm(cq, hd):
             .translate(cq.Vector(0, 0, -thick)))   # z: -6 to 0
 
     # Fuse unbored bosses with plate first, then bore through entire palm+boss Z
-    boss_r, boss_top, bore_r = 3.0, 7.7, 1.5
+    boss_r, boss_top, bore_r = 3.0, 7.7, 1.2
     unbored_bosses = []
     for fdata in hd["fingers"].values():
         rx, ry = fdata["root_mm"][0], fdata["root_mm"][1]
@@ -127,8 +127,8 @@ def _make_carrier(cq, cl):
     con2 = _box(cq, cx2, cy_con, 0, cdx, 5.0, 4.0)
     solid = _fuse(cq, post, bridge, ear1, ear2, con1, con2)
     # Bores
-    bz = _cyl_z(cq, 0, 0, -2.1, 2.1, 1.5)           # yaw bore Z through (0,0) -- R1.5 for Bowden
-    bx = _cyl_x(cq, -8.1, 8.1, cl, 0.0, 1.5)        # fork bore X at Y=cl -- R1.5 for Bowden
+    bz = _cyl_z(cq, 0, 0, -2.1, 2.1, 1.2)           # yaw pivot-pin bore Z through (0,0)
+    bx = _cyl_x(cq, -8.1, 8.1, cl, 0.0, 1.2)        # MCP pivot-pin bore X at Y=cl
     return _check(_cut(cq, solid, bz, bx), "carrier")
 
 
@@ -156,7 +156,7 @@ def _make_phalange(cq, L, is_distal):
         ce1 = _cyl_x(cq, -8.0, -3.4, L, 0.0, 6.0)
         ce2 = _cyl_x(cq,  3.4,  8.0, L, 0.0, 6.0)
         solid = _fuse(cq, solid, cb, fcon1, fcon2, ce1, ce2)
-        bxd = _cyl_x(cq, -8.1, 8.1, L, 0.0, 1.5)  # R1.5 for Bowden sheath
+        bxd = _cyl_x(cq, -8.1, 8.1, L, 0.0, 1.2)  # distal pivot-pin bore
         solid = _cut(cq, solid, bxd)
     else:
         # Rounded distal tip
@@ -164,7 +164,7 @@ def _make_phalange(cq, L, is_distal):
         solid = _fuse(cq, solid, tip)
 
     # Root bore (through tongue along X)
-    bxr = _cyl_x(cq, -3.1, 3.1, 0.0, 0.0, 1.5)  # R1.5 for Bowden sheath
+    bxr = _cyl_x(cq, -3.1, 3.1, 0.0, 0.0, 1.2)  # root pivot-pin bore
     return _check(_cut(cq, solid, bxr),
                   f"phal_L{L}_{'dist' if is_distal else 'prox'}")
 

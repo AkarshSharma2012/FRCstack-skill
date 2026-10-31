@@ -228,13 +228,13 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
             });
         }
 
-        // Through-palm bores R1.5, z[-6.1, 7.8]  -- R1.5 for Bowden tendon sheath
+        // Through-palm yaw pivot-pin bores R1.2, z[-6.1, 7.8]
         for (var boi = 0; boi < 5; boi += 1)
         {
             fCylinder(context, palmId + "bore" + boi, {
                 "bottomCenter" : vector(bossXY[boi][0] * MM, bossXY[boi][1] * MM, -6.1 * MM),
                 "topCenter"    : vector(bossXY[boi][0] * MM, bossXY[boi][1] * MM,  7.8 * MM),
-                "radius"       : 1.5 * MM
+                "radius"       : 1.2 * MM
             });
             opBoolean(context, palmId + "cbore" + boi, {
                 "targets"       : qCreatedBy(palmId + "slab1", EntityType.BODY),
@@ -321,13 +321,13 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
             fCylinder(context, cid + "boreZ", {
                 "bottomCenter" : vector(0, 0, -2.1) * MM,
                 "topCenter"    : vector(0, 0,  2.1) * MM,
-                "radius"       : 1.5 * MM  // R1.5 for Bowden
+                "radius"       : 1.2 * MM
             });
-            // Fork bore R1.5 through X at Y=12
+            // Fork bore R1.2 through X at Y=12
             fCylinder(context, cid + "boreX", {
                 "bottomCenter" : vector(-8.1, 12, 0) * MM,
                 "topCenter"    : vector( 8.1, 12, 0) * MM,
-                "radius"       : 1.5 * MM  // R1.5 for Bowden
+                "radius"       : 1.2 * MM
             });
             opBoolean(context, cid + "cut1", {
                 "targets"       : qCreatedBy(cid + "post",  EntityType.BODY),
@@ -366,8 +366,6 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
                 "operationType" : BooleanOperationType.UNION
             });
             // Bar y[6.4, L-8]
-            const barMid = (6.4 + (L - 8)) / 2;
-            const barLen = (L - 8) - 6.4;
             fCuboid(context, pid + "bar", {
                 "corner1" : vector(-5.5, 6.4,       -4.5) * MM,
                 "corner2" : vector( 5.5, L - 8.0,   4.5) * MM
@@ -417,7 +415,7 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
                 fCylinder(context, pid + "boreXf", {
                     "bottomCenter" : vector(-8.1, L, 0) * MM,
                     "topCenter"    : vector( 8.1, L, 0) * MM,
-                    "radius"       : 1.5 * MM  // R1.5 for Bowden sheath
+                    "radius"       : 1.2 * MM
                 });
                 opBoolean(context, pid + "cfar", {
                     "targets"       : qCreatedBy(pid + "tcyl",  EntityType.BODY),
@@ -443,7 +441,7 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
             fCylinder(context, pid + "boreXr", {
                 "bottomCenter" : vector(-3.1, 0, 0) * MM,
                 "topCenter"    : vector( 3.1, 0, 0) * MM,
-                "radius"       : 1.5 * MM  // R1.5 for Bowden sheath
+                "radius"       : 1.2 * MM
             });
             opBoolean(context, pid + "crroot", {
                 "targets"       : qCreatedBy(pid + "tcyl",   EntityType.BODY),
@@ -455,12 +453,6 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
                 "bodies"    : qCreatedBy(pid + "tcyl", EntityType.BODY),
                 "transform" : toWorld(cs)
             });
-        };
-
-        // Helper: stable root ID key for body query after transform
-        const bodyQ = function(rootId is Id) returns Query
-        {
-            return qCreatedBy(rootId, EntityType.BODY);
         };
 
         // ---------------------------------------------------------------
@@ -536,7 +528,7 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
             setProperty(context, {
                 "entities"     : qCreatedBy(cid + "post", EntityType.BODY),
                 "propertyType" : PropertyType.NAME,
-                "value"        : fn & "_carrier"
+                "value"        : fn ~ "_carrier"
             });
             setProperty(context, {
                 "entities"     : qCreatedBy(cid + "post", EntityType.BODY),
@@ -550,7 +542,7 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
             setProperty(context, {
                 "entities"     : qCreatedBy(pxid + "tcyl", EntityType.BODY),
                 "propertyType" : PropertyType.NAME,
-                "value"        : fn & "_proximal"
+                "value"        : fn ~ "_proximal"
             });
             setProperty(context, {
                 "entities"     : qCreatedBy(pxid + "tcyl", EntityType.BODY),
@@ -564,7 +556,7 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
             setProperty(context, {
                 "entities"     : qCreatedBy(mdid + "tcyl", EntityType.BODY),
                 "propertyType" : PropertyType.NAME,
-                "value"        : fn & "_middle"
+                "value"        : fn ~ "_middle"
             });
             setProperty(context, {
                 "entities"     : qCreatedBy(mdid + "tcyl", EntityType.BODY),
@@ -578,7 +570,7 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
             setProperty(context, {
                 "entities"     : qCreatedBy(dtid + "tcyl", EntityType.BODY),
                 "propertyType" : PropertyType.NAME,
-                "value"        : fn & "_distal"
+                "value"        : fn ~ "_distal"
             });
             setProperty(context, {
                 "entities"     : qCreatedBy(dtid + "tcyl", EntityType.BODY),
@@ -648,7 +640,7 @@ export const frcstackHand = defineFeature(function(context is Context, id is Id,
     });
 
 // Enum for pose presets
-enum HandPreset
+export enum HandPreset
 {
     annotation { "Name" : "Open" }
     OPEN,
