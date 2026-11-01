@@ -22,13 +22,14 @@ BOM = [
     ("Sensors", "6-axis IMU breakout (MPU-6050 class) for balance", 1, 6.00, "typical hobby price", "on chest, I2C to ESP32"),
     ("Power", "Ovonic 3S 11.1 V 5000 mAh 50C LiPo, XT60", 1, 32.99, "ovonicshop.com ($32.99)", "~20-40 min mixed use"),
     ("Power", "LiPo balance charger (2-3S, AC input)", 1, 30.00, "typical (ISDT/HTRC class)", "required to charge safely"),
-    ("Power", "5 V 3 A buck/UBEC for Pi + camera", 1, 8.00, "typical hobby price", "from the 3S bus"),
+    ("Power", "6 V 3 A UBEC (2-6S in) for the 4 SC09 servos", 1, 8.00, "typical hobby price",
+     "SC09 is rated 4-6 V and must NOT run on the 11.1 V bus; the driver HAT's onboard 5 V buck powers the Pi"),
     ("Power", "XT60 pigtails, 30 A blade fuse + holder, main switch, LiPo-safe bag", 1, 18.00, "typical", "safety"),
     ("Frame", "PLA+ filament 1 kg (structure)", 2, 18.00, "typical $16-20/kg", "~1.8 kg printed parts incl. supports"),
     ("Frame", "TPU 95A filament 0.5 kg (feet soles, gripper pads, bumpers)", 1, 16.00, "typical", "grip + impact"),
-    ("Frame", "M2/M3 screw + nut + heat-set insert kit", 1, 22.00, "typical assortment", "servo horns use supplied screws"),
-    ("Frame", "6 mm carbon tube 1 m (leg spars)", 1, 9.00, "typical", "stiffens thigh/shin"),
-    ("Frame", "MR85 flanged bearings, 10-pack", 2, 6.00, "typical", "idler side of every leg joint"),
+    ("Frame", "M2/M3 screw + nut + M3 heat-set insert kit", 1, 22.00, "typical assortment",
+     "4x M3 per horn/idler plate, 2x M3 + inserts per idler, 4x M2 per servo cradle"),
+    ("Wiring", "Waveshare SC servo bus cable for the separate 6 V SC09 chain", 1, 6.00, "typical", "own chain, own power"),
     ("Wiring", "Servo bus cable extensions, 3-pin, assorted", 1, 14.00, "typical", "daisy-chain"),
     ("Wiring", "Silicone wire 18/22 AWG, heat-shrink, JST/Dupont kit", 1, 15.00, "typical", ""),
     ("Head", "0.96 in OLED 'eyes' (SSD1306)", 2, 4.00, "typical", "expressions"),
@@ -88,11 +89,10 @@ def plan_md(sub, margin, total):
         a(f"| {g} | {j} | {act} | {n} |")
     a(f"| **Total** | | | **{sum(d[3] for d in DOF)}** |")
     a("")
-    a("**Why ST3215 for legs:** a 70 cm, 2.8 kg robot shifting its weight onto one leg puts roughly "
-      "2.8 kg x 9.81 x ~0.06 m = 1.6 N.m on the support-leg hip/ankle roll.  ST3215 stall is ~2.9 N.m, so peak "
-      "load is ~57 % of stall: workable for slow, statically-stable walking, but **not** for running or jumping. "
-      "Keep legs short (thigh 130 mm, shin 130 mm) and mass low; that ratio is the single most important "
-      "design rule for this budget.")
+    a("**Why ST3215 for legs:** the CAD statics model (built from the real part volumes, 2.8 kg total) gives "
+      "~1.4 N.m on the support-leg hip/ankle roll when standing on one foot, against 2.72 N.m stall at 11.1 V "
+      "(~52 %): workable for slow, statically-stable walking, but **not** for running or jumping.  The legs are "
+      "short (thigh 120 mm, shin 120 mm) to keep that ratio; it is the most important design rule here.")
     a("")
     a("## 3. Parts list")
     a("| # | Category | Item | Qty | Unit $ | Line $ | Source / note |")
@@ -116,14 +116,18 @@ def plan_md(sub, margin, total):
     a("")
     a("## 4. Electronics and power")
     a("```")
-    a("3S LiPo 11.1 V ──XT60── 30 A fuse ── main switch ──┬── Bus Servo Driver HAT (A) (ESP32)")
-    a("                                                   │       └─ TTL bus ─ 20 servos (4 daisy chains:")
-    a("                                                   │          L-leg 6, R-leg 6, arms+grippers 6, head 2)")
-    a("                                                   └── 5 V 3 A buck ── Pi Zero 2 W ── Camera Module 3")
+    a("3S LiPo 11.1 V ──XT60── 30 A fuse ── main switch ──┬── Bus Servo Driver HAT (A) (ESP32, onboard 5 V buck)")
+    a("                                                   │       ├─ TTL bus ─ 16 ST3215 (3 chains:")
+    a("                                                   │       │          L-leg 6, R-leg 6, arms 4)")
+    a("                                                   │       └─ 40-pin header ─ Pi Zero 2 W (5 V) ─ Camera 3")
+    a("                                                   └── 6 V UBEC ── SC09 power (grippers 2, head 2)")
+    a("SC09 signal: shares the TTL data line + ground with the HAT; only +V comes from the 6 V UBEC.")
     a("ESP32 <─UART 1 Mbps─> Pi Zero 2 W        IMU (I2C) -> ESP32")
     a("Pi: 2x OLED eyes (I2C)")
     a("```")
-    a("- **Servo supply runs straight from the pack** (ST3215 accepts 6-12.6 V), so there is no big regulator.")
+    a("- **ST3215 supply runs straight from the pack** (rated 6-12.6 V), so there is no big regulator.")
+    a("- **SC09 is rated 4-6 V**: it must never see the 11.1 V bus.  Its chain gets +V from the 6 V UBEC; "
+      "cut the +V wire between the HAT and the first SC09 and keep data + ground connected.")
     a("- Split the bus into 4 chains so no single 3-pin lead carries more than ~6 servos of current.")
     a("- Peak draw: up to ~2.7 A stall per ST3215; with sensible torque limits set in firmware the realistic "
       "peak is ~10-15 A, which the 5000 mAh pack (50C-class) and XT60 handle easily.")
@@ -131,21 +135,33 @@ def plan_md(sub, margin, total):
       "10.5 V (3.5 V/cell).  Always charge in a LiPo bag.")
     a("")
     a("## 5. Printed parts")
+    a("Every printed part is in the CAD (`humanoid-700-stand.step`) and listed with its estimated mass in "
+      "`humanoid-700-print-list.csv`.  Joint design: each ST3215 is held by a **cradle** (C-clamp over the "
+      "far end of the case, 4x M2 into the servo's own tapped holes) on one link, and turns a two-piece "
+      "**U-bracket** on the next link (front plate on the splined horn with 4x M3, rear idler plate on the "
+      "idler disc, joined by 2x M3 into heat-set inserts).  Bracket sizes were solved so nothing collides "
+      "over each joint's full range.")
+    a("")
     a("| Part | Qty | Material | Notes |")
     a("|---|---|---|---|")
-    for p in [("Foot plate with TPU sole", 2, "PLA+ / TPU", "120 x 70 mm, wide stance"),
-              ("Ankle bracket (pitch-roll cross)", 2, "PLA+", "bearing on the idle side"),
-              ("Shin (two side plates + 6 mm spar)", 2, "PLA+", "130 mm"),
-              ("Knee bracket", 2, "PLA+", ""),
-              ("Thigh (two side plates + spar)", 2, "PLA+", "130 mm"),
-              ("Hip block (yaw-roll-pitch stack)", 2, "PLA+", "keep the three axes intersecting"),
-              ("Pelvis plate", 1, "PLA+", "hip yaw servos mount here"),
-              ("Torso box (front, back, two sides, lid)", 1, "PLA+", "battery tray low, electronics high"),
-              ("Shoulder bracket", 2, "PLA+", ""),
-              ("Upper arm / forearm", 4, "PLA+", "100 mm each"),
-              ("Gripper (2 fingers + SC09 mount)", 2, "PLA+ / TPU", "fin-ray TPU pads"),
-              ("Neck pan/tilt + head shell", 1, "PLA+", "camera + OLED eyes"),
-              ("Bumpers / feet edges", 4, "TPU", "fall protection")]:
+    for p in [("Foot plate + ankle-roll U-bracket", 2, "PLA+", "140 x 76 mm foot, 4 strap holes"),
+              ("TPU sole", 2, "TPU", "3 mm, grip + shock"),
+              ("Ankle cross (pitch + roll cradles)", 2, "PLA+", ""),
+              ("Shin (knee + ankle-pitch U-brackets, hollow spine)", 2, "PLA+", "120 mm joint spacing"),
+              ("Thigh (hip-pitch U-bracket, spine, knee cradle)", 2, "PLA+", "120 mm joint spacing"),
+              ("Hip cross (roll + pitch cradles)", 2, "PLA+", ""),
+              ("Hip yaw link (yaw + roll U-brackets)", 2, "PLA+", ""),
+              ("Idler plates", 14, "PLA+", "one per U-bracket joint"),
+              ("Pelvis plate with hip-yaw cradles + battery rails", 1, "PLA+", ""),
+              ("Torso walls with electronics shelf", 1, "PLA+", "open back, shoulder windows"),
+              ("Torso back cover", 1, "PLA+", "power-switch cut-out"),
+              ("Torso top plate with shoulder hangers + neck holder", 1, "PLA+", ""),
+              ("Upper arm (shoulder horn plate + elbow cradle)", 2, "PLA+", ""),
+              ("Forearm + gripper palm + fixed jaw", 2, "PLA+", "elbow U-bracket, SC09 pocket"),
+              ("Gripper finger", 2, "PLA+", "on SC09 horn"),
+              ("Fin-ray jaw + finger pads", 4, "TPU", "soft grip"),
+              ("Neck turntable", 1, "PLA+", "pan disc + tilt SC09 pocket"),
+              ("Head shell", 1, "PLA+", "camera + OLED eye windows")]:
         a(f"| {p[0]} | {p[1]} | {p[2]} | {p[3]} |")
     a("")
     a("Print settings: 0.2 mm layers, 4 walls, 30-40 % gyroid infill, heat-set inserts for every screw "
@@ -156,14 +172,14 @@ def plan_md(sub, margin, total):
         "**Order parts** (servos ship from China: allow 1-3 weeks).  Print while waiting.",
         "**Set up servos one at a time:** plug each servo alone into the driver HAT, give it a unique ID "
         "(1-20, map in Section 2), set the middle position, and set a torque/current limit (~80 %).  Label each.",
-        "**Print the legs first** (feet, ankles, shins, knees, thighs, hips, pelvis).  Press bearings and "
-        "heat-set inserts.",
+        "**Print the legs first** (feet, ankle crosses, shins, thighs, hip crosses, hip yaw links, idler "
+        "plates, pelvis).  Press M3 heat-set inserts into every bracket bridge.",
         "**Assemble one leg** with servos at their middle position so the leg is straight; check every joint "
         "moves without binding by hand-turning before powering.",
         "**Mirror for the second leg**, mount both on the pelvis, and bench-test each joint over its range on a "
         "stand with the robot hanging (feet off the table).",
-        "**Torso:** fit the battery tray, fuse, switch, driver HAT, buck converter and Pi Zero.  Route the four "
-        "servo chains through the pelvis.",
+        "**Torso:** fit the battery on its rails, fuse, switch, 6 V UBEC, driver HAT and Pi Zero on the shelf. "
+        "Route the servo chains through the shelf slots.",
         "**Arms and grippers**, then the **head** (pan/tilt, camera, OLED eyes).",
         "**Wiring check:** with no battery, check for shorts; then power from a bench supply at 11 V with a "
         "2 A current limit; confirm all 20 IDs respond.",
@@ -192,7 +208,8 @@ def plan_md(sub, margin, total):
     a("- Hobby bus servos are the weak point for walking: expect slow steps (~2-4 s per step), "
       "overheating on long sessions and occasional stripped horns.  The contingency covers ~1 spare ST3215.")
     a("- Prices drift; recheck before ordering.  The 10 % margin may not cover overseas shipping in all regions.")
-    a("- This plan has not been built or tested; joint torques are hand estimates, not a simulation.")
+    a("- Not built or tested.  Joint torques come from a quasi-static model of the CAD (no dynamics, "
+      "no FEA of the printed brackets).  The SC09 and electronics are size envelopes, not vendor CAD.")
     a("- Upgrade path if walking is too weak: ST3025 (40 kg.cm) or RSBL45-24 servos on the hips/knees only.")
     return "\n".join(lines) + "\n"
 
