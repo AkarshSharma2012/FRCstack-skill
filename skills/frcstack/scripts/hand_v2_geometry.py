@@ -42,6 +42,7 @@ SEC = {"proximal": ((7.0, 5.6), (6.2, 5.0)),
 THUMB_SCALE = 1.1
 PAD_BASE_Z = 2.6            # distal palmar flat that carries the fin-ray pad
 FIN_T, FIN_RIBS = 0.8, 5    # TPU 85A wall / rib thickness, rib count
+FIN_H = (4.4, 1.4)          # fin-ray pad height at root / tip
 
 # --- forearm ----------------------------------------------------------------
 ZC = -2.0                   # forearm centre-line height
@@ -207,7 +208,7 @@ def _fin_ray(L, sc=1.0):
     """Fin Ray-style pad: hollow wedge (TPU 85A) with cross ribs, on the distal land."""
     cq = _cq()
     a1 = SEC["distal"][1][0] * sc
-    y0, y1, zb, h0, h1, w = BODY_START + 1.2, L - 1.6, PAD_BASE_Z, 4.4, 1.4, 2 * a1 * 0.92
+    y0, y1, zb, h0, h1, w = BODY_START + 1.2, L - 1.6, PAD_BASE_Z, FIN_H[0], FIN_H[1], 2 * a1 * 0.92
     t = FIN_T
 
     def wedge(pts, width):
