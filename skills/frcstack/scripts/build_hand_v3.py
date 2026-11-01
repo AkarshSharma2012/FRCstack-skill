@@ -115,6 +115,8 @@ def main(argv=None):
     mass = 0.0
     counts = {}
     for n, s in parts.items():
+        if n == "ball_reference_150mm":
+            continue
         m, _ = _material(n)
         counts[m] = counts.get(m, 0) + 1
         if m in ("pla", "tpu"):
