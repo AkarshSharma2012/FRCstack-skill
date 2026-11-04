@@ -79,7 +79,7 @@ def legs() -> dict:
         P[f"foot_{side}"] = (link, hb.fuse(foot, h.pop(f"heel_pod_{side}")))
         for n, shp in h.items():
             P[n] = (f"foot_{side}", shp)
-        P[f"knee_pad_tpu_{side}"] = (f"shin_{side}", W(12, 20, 32, 57, 140, 195, s))
+        P[f"knee_pad_tpu_{side}"] = (f"shin_{side}", W(12, 26, 32, 57, 140, 195, s))
         out.update(P)
     return out
 
@@ -89,8 +89,11 @@ def arms() -> dict:
     for side in "LR":
         s = 1 if side == "L" else -1
         P = G.arm(side)
+        link, ua = P[f"upper_arm_{side}"]                                     # broad shoulder cap (sketch)
+        cap = _cq().Workplane(obj=W(-28, 28, 78.8, 116, 608, 688, s)).edges().fillet(12).val()
+        P[f"upper_arm_{side}"] = (link, hb.fuse(ua, cap))
         px, _, pz = L.GRIP_P
-        P[f"paw_pad_tpu_{side}"] = (f"forearm_{side}", W(px - 52, px - 42, 98, 126, pz - 62, pz - 58, s))
+        P[f"paw_pad_tpu_{side}"] = (f"forearm_{side}", W(px - 52, px - 42, 98, 126, pz - 68, pz - 58, s))
         out.update(P)
     return out
 
@@ -129,6 +132,10 @@ def torso() -> dict:
     handle = hb.fuse(W(-75, -44.5, -42, -34, 640, 652), W(-75, -44.5, 34, 42, 640, 652),
                      W(-75, -67, -42, 42, 640, 652))
     back = hb.cut(back, W(-hx - 1, -hx + w + 1, -6.5, 6.5, 603.5, 616.5))
+    band_box = hb.box(-hx - 1, hx + 1, -hy - 1, hy + 1, z0 - 1, 528)                # dark hip band (sketch)
+    P["hip_band"] = ("base", hb.fuse(_inter(P["torso_shell"][1], band_box), _inter(back, band_box)))
+    P["torso_shell"] = ("base", hb.cut(P["torso_shell"][1], band_box))
+    back = hb.cut(back, band_box)
     P["torso_back_cover"] = ("base", hb.fuse(back, handle))
     P["light_diffuser"] = ("base", W(hx - w, hx - 0.6, -27, 27, 625, 635))
 
@@ -174,27 +181,29 @@ def head() -> dict:
     P["neck_turntable"] = ("neck", hb.fuse(disc, holder))
     P["servo_neck_tilt"] = ("neck", servo("neck_tilt"))
 
-    hx0, hx1, hy, hz0, hz1, w = -36.0, 50.0, 52.0, tz - 20, tz + 60, 2.4
-    outer = _rbox_all(hx0, hx1, -hy, hy, hz0, hz1, 14.0)
-    inner = _rbox_all(hx0 + w, hx1 - w, -hy + w, hy - w, hz0 - 20, hz1 - w, 11.6)
+    # wide, flat "visor bar" head (from the team's sketch): 132 wide x 46 tall x 82 deep
+    hx0, hx1, hy, hz0, hz1, w, r = -36.0, 46.0, 66.0, tz - 12, tz + 34, 2.4, 8.0
+    outer = _rbox_all(hx0, hx1, -hy, hy, hz0, hz1, r)
+    inner = _rbox_all(hx0 + w, hx1 - w, -hy + w, hy - w, hz0 - 20, hz1 - w, r - w)
     shell = hb.cut(outer, inner)
-    win = G._rz(hb.box(-1, 1, -34, 34, tz - 8, tz + 44), 0)
-    window = _cq().Workplane(obj=hb.box(hx1 - w - 1, hx1 + 1, -34, 34, tz - 8, tz + 44)).edges("|X").fillet(8).val()
+    window = _xslot(48, tz + 4, tz + 22, hx1 - w - 1, hx1 + 1, 6)             # full-width eye slot
     shell = hb.cut(shell, window)
     hubp = hb.fuse(_ycyl(8.0, tx, ty + 1.0, ty + 6.6, tz), W(tx - 8, tx + 8, ty + 1.0, ty + 6.6, tz, hz1 - w + 0.5))
     hubp = hb.cut(hubp, _ycyl(3.2, tx, ty, ty + 4.0, tz))
-    pods = [_ycyl(15.0, tx, s * (hy - 1), s * (hy + 5), tz, 1) for s in (1, -1)]
-    P["head_shell"] = ("head", hb.fuse(shell, hubp, *pods))
-    for side, s in (("L", 1), ("R", -1)):
-        P[f"ear_cap_{side}"] = ("head", _ycyl(8.0, tx, hy + 5, hy + 7, tz, s))
-    flange = _cq().Workplane(obj=hb.box(hx1 - w - 1, hx1 - w, -36, 36, tz - 10, tz + 46)).edges("|X").fillet(9).val()
-    plug = _inter(window, hb.box(hx1 - w - 0.3, hx1, -40, 40, tz - 20, tz + 60))
-    visor = hb.fuse(flange, plug)
-    P["visor_smoked_acrylic"] = ("head", visor)
-    P["oled_face_1in3"] = ("head", W(hx1 - w - 1 - 3.7, hx1 - w - 1, -17.7, 17.7, tz + 10, tz + 43.5))
-    P["camera_module_3"] = ("head", W(hx1 - w - 1 - 11.5, hx1 - w - 1, -12.5, 12.5, tz - 15, tz + 9))
-    del win
+    P["head_shell"] = ("head", hb.fuse(shell, hubp))
+    P["head_top_trim"] = ("head", G._rz(W(hx0 + 10, hx1 - 10, -hy + 10, hy - 10, hz1, hz1 + 3), 6))
+    flange = _xslot(51, tz + 1, tz + 25, hx1 - w - 1, hx1 - w, 7)
+    plug = _inter(window, hb.box(hx1 - w - 0.3, hx1, -60, 60, tz, tz + 30))
+    P["visor_smoked_acrylic"] = ("head", hb.fuse(flange, plug))
+    for side, s in (("L", 1), ("R", -1)):                                       # 0.91" 128x32 OLED slit eyes
+        P[f"oled_eye_{side}"] = ("head", W(hx1 - w - 1 - 3.7, hx1 - w - 1, 14, 52, tz + 7, tz + 19, s))
+    P["camera_module_3"] = ("head", W(hx1 - w - 1 - 11.5, hx1 - w - 1, -12.5, 12.5, tz - 1, tz + 23))
     return P
+
+
+def _xslot(hy, z0, z1, x0, x1, rf):
+    """Box spanning y +-hy, z0..z1, x0..x1 with the edges along X rounded (a slot seen from the front)."""
+    return _cq().Workplane(obj=hb.box(x0, x1, -hy, hy, z0, z1)).edges("|X").fillet(rf).val()
 
 
 # --------------------------------------------------------------------------- assembly
@@ -240,7 +249,7 @@ def fusion_link(name, part):
 
 
 MASS_G = {"n20_": OL.N20_MASS_G, "bearing_": 1.0, "axle_pin": 0.5, "drv8833": 2.0, "led_stick": 3.0,
-          "oled_face": 6.0, "ubec_6v_5a": 18.0, "camera_": 4.0}
+          "oled_eye": 2.0, "ubec_6v_5a": 18.0, "camera_": 4.0}
 DENS = {"pla": 1.24e-3 * 0.6, "tpu": 1.21e-3 * 0.8, "acrylic": 1.18e-3}
 
 

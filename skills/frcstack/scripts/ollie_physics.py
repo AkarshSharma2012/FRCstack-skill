@@ -59,9 +59,9 @@ def contact_sets() -> dict:
         out[f"wheel_{side}"] = (f"wheel_{side}", [(OL.WHEEL_X + OL.WHEEL_R * math.cos(a), s * y,
                                                    OL.WHEEL_Z + OL.WHEEL_R * math.sin(a))
                                                   for a in t for y in (49.5, 60.5)])
-        out[f"knee_{side}"] = (f"shin_{side}", _box_pts(19, 20, 32, 57, 140, 195, s))
+        out[f"knee_{side}"] = (f"shin_{side}", _box_pts(25, 26, 32, 57, 140, 195, s))
         px, py, pz = L.GRIP_P
-        out[f"paw_{side}"] = (f"forearm_{side}", _box_pts(px - 52, px - 42, 98, 126, pz - 62, pz - 61, s))
+        out[f"paw_{side}"] = (f"forearm_{side}", _box_pts(px - 52, px - 42, 98, 126, pz - 68, pz - 67, s))
     return out
 
 
@@ -198,7 +198,7 @@ def crawl_pose(mass, comz):
                 if not cands:
                     continue
                 _, cost, v, e = min(cands, key=lambda a: a[1])
-                q = dict(ql, **L.both(shoulder=v - beta, elbow=e), neck_tilt=-45.0)
+                q = dict(ql, **L.both(shoulder=v - beta, elbow=e, gripper=28.0), neck_tilt=-45.0)
                 Tl = transforms(q, Tb)
                 C, _ = com(Tl, mass, comz)
                 pts = [lowest(n, Tl) for n in ("knee_L", "knee_R", "paw_L", "paw_R")]

@@ -5,7 +5,7 @@ How to use (Fusion 360):
   1. File > Open > ollie-stand.step  (or Upload, then open).  Leave it in the STANDING pose.
   2. Utilities > Add-Ins > Scripts and Add-Ins > Scripts tab > the green "+" > pick the folder that
      contains this file and ollie-joints.json > select OLLIE_joints > Run.
-  3. The script grounds the "base" (torso) component, then creates one revolute joint per actuator
+  3. The script grounds the "link_base" (torso) component, then creates one revolute joint per actuator
      (16 ST3215, 4 SC09, 2 heel wheels) with the real axis, pivot point and angle limits.
   4. Drag any limb, or right-click a joint > Drive Joints, to pose it.  Skate / crawl poses are in
      ollie-skate.step and ollie-crawl.step for reference.
@@ -42,14 +42,14 @@ def run(context):
         design.designType = adsk.fusion.DesignTypes.ParametricDesignType
         root = design.rootComponent
         spec = json.load(open(os.path.join(HERE, "ollie-joints.json")))
-        base = _find(root, "base")
+        base = _find(root, spec.get("ground", "link_base"))
         if base is None:
-            ui.messageBox("Could not find the 'base' component. Import ollie-stand.step (standing pose).")
+            ui.messageBox("Could not find the 'link_base' component. Import ollie-stand.step (standing pose).")
             return
         base.isGrounded = True
         made, missing = 0, []
         for j in spec["joints"]:
-            parent = base if j["parent"] == "base" else _find(root, j["parent"])
+            parent = base if j["parent"] == spec.get("ground", "link_base") else _find(root, j["parent"])
             child = _find(root, j["child"])
             if parent is None or child is None:
                 missing.append(j["name"])

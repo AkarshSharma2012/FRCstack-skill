@@ -30,7 +30,7 @@ import ollie_layout as OL
 import ollie_physics as OP
 
 COLORS = dict(BH.COLORS, acrylic=(0.08, 0.09, 0.11, 0.85))
-SHELL = ("torso_shell", "torso_back_cover", "torso_top_plate", "pelvis_plate", "head_shell", "thigh_", "shin_",
+SHELL = ("torso_shell", "torso_back_cover", "torso_top_plate", "head_shell", "thigh_", "shin_",
          "upper_arm_", "forearm_", "foot_", "neck_turntable")
 ORANGE = ("tpu", "ear_cap", "wheel_hub")
 
@@ -132,7 +132,7 @@ def export(P, q, Tb, path, vendor):
         links.setdefault(OG.fusion_link(n, p), []).append(n)
     top = cq.Assembly(name="OLLIE")
     for ln in sorted(links):
-        sub = cq.Assembly(name=ln)
+        sub = cq.Assembly(name=f"link_{ln}")         # prefix: link names must not clash with part names
         for n in links[ln]:
             p = P[n]
             T = Tl[OG.fusion_link(n, p)]
@@ -141,7 +141,7 @@ def export(P, q, Tb, path, vendor):
                 sub.add(G.place(v, T @ L.servo_frame(jn)), name=n, color=cq.Color(*COLORS["vendor"]))
             else:
                 sub.add(G.place(p.shape, T), name=n, color=cq.Color(*color(n, p.material)))
-        top.add(sub, name=ln)
+        top.add(sub, name=f"link_{ln}")
     top.export(str(path))
     return path.stat().st_size
 
@@ -149,11 +149,12 @@ def export(P, q, Tb, path, vendor):
 def joints_json(path):
     rows = []
     for jn, j in {**L.JOINTS, **OL.WHEEL_JOINTS}.items():
-        rows.append({"name": jn, "parent": j["parent"], "child": j["child"], "point_mm": list(map(float, j["p"])),
+        rows.append({"name": jn, "parent": f"link_{j['parent']}", "child": f"link_{j['child']}",
+                     "point_mm": list(map(float, j["p"])),
                      "axis": list(map(float, j["axis"])),
                      "range_deg": list(j["range"]) if j["range"] else None,
                      "actuator": {"st": "Waveshare ST3215", "sc": "Waveshare SC09", "n20": "N20 150:1 encoder"}[j["kind"]]})
-    path.write_text(json.dumps({"units": "mm", "ground": "base", "zero_pose": "standing (ollie-stand.step)",
+    path.write_text(json.dumps({"units": "mm", "ground": "link_base", "zero_pose": "standing (ollie-stand.step)",
                                 "joints": rows}, indent=2))
     return rows
 
