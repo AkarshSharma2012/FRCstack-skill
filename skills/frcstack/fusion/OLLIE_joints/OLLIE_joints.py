@@ -47,36 +47,48 @@ def run(context):
             ui.messageBox("Could not find the 'link_base' component. Import ollie-stand.step (standing pose).")
             return
         base.isGrounded = True
-        made, missing = 0, []
+        # Joint geometry must be a real design entity (sketch point / construction point / vertex), not a
+        # bare Point3D.  One hidden root sketch on the XY plane holds a 3-D sketch point per pivot; its axes
+        # match the model axes, so the X/Y/Z joint directions below are world directions.
+        sk = root.sketches.add(root.xYConstructionPlane)
+        sk.name = "OLLIE joint pivots"
+        made, missing, failed = 0, [], []
         for j in spec["joints"]:
             parent = base if j["parent"] == spec.get("ground", "link_base") else _find(root, j["parent"])
             child = _find(root, j["child"])
             if parent is None or child is None:
                 missing.append(j["name"])
                 continue
-            p = adsk.core.Point3D.create(*(v / 10.0 for v in j["point_mm"]))
-            geo = adsk.fusion.JointGeometry.createByPoint(p)
-            ax = j["axis"]
-            direction = (adsk.fusion.JointDirections.XAxisJointDirection if abs(ax[0]) > 0.5 else
-                         adsk.fusion.JointDirections.YAxisJointDirection if abs(ax[1]) > 0.5 else
-                         adsk.fusion.JointDirections.ZAxisJointDirection)
-            ji = root.asBuiltJoints.createInput(child, parent, geo)
-            ji.setAsRevoluteJointMotion(direction)
-            joint = root.asBuiltJoints.add(ji)
-            joint.name = j["name"]
-            rng = j.get("range_deg")
-            if rng:
-                lim = joint.jointMotion.rotationLimits
-                sign = 1.0 if (ax[0] + ax[1] + ax[2]) > 0 else -1.0
-                lo, hi = sorted((sign * rng[0], sign * rng[1]))
-                lim.isMinimumValueEnabled = True
-                lim.minimumValue = math.radians(lo)
-                lim.isMaximumValueEnabled = True
-                lim.maximumValue = math.radians(hi)
-            made += 1
-        msg = f"OLLIE: created {made} joints."
+            try:
+                p = adsk.core.Point3D.create(*(v / 10.0 for v in j["point_mm"]))
+                sp = sk.sketchPoints.add(sk.modelToSketchSpace(p))
+                geo = adsk.fusion.JointGeometry.createByPoint(sp)
+                ax = j["axis"]
+                direction = (adsk.fusion.JointDirections.XAxisJointDirection if abs(ax[0]) > 0.5 else
+                             adsk.fusion.JointDirections.YAxisJointDirection if abs(ax[1]) > 0.5 else
+                             adsk.fusion.JointDirections.ZAxisJointDirection)
+                ji = root.asBuiltJoints.createInput(child, parent, geo)
+                ji.setAsRevoluteJointMotion(direction)
+                joint = root.asBuiltJoints.add(ji)
+                joint.name = j["name"]
+                rng = j.get("range_deg")
+                if rng:
+                    lim = joint.jointMotion.rotationLimits
+                    sign = 1.0 if (ax[0] + ax[1] + ax[2]) > 0 else -1.0
+                    lo, hi = sorted((sign * rng[0], sign * rng[1]))
+                    lim.isMinimumValueEnabled = True
+                    lim.minimumValue = math.radians(lo)
+                    lim.isMaximumValueEnabled = True
+                    lim.maximumValue = math.radians(hi)
+                made += 1
+            except Exception as e:  # noqa: BLE001
+                failed.append(f"{j['name']}: {e}")
+        sk.isVisible = False
+        msg = f"OLLIE: created {made} of {len(spec['joints'])} joints."
         if missing:
             msg += "\nSkipped (component not found): " + ", ".join(missing)
+        if failed:
+            msg += "\nFailed:\n" + "\n".join(failed[:10])
         ui.messageBox(msg)
     except Exception:  # noqa: BLE001
         if ui:
