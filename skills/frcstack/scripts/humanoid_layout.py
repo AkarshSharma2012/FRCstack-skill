@@ -135,6 +135,22 @@ def bracket_params(jn):
     return phi, R, xc
 
 
+def configure(ranges: dict, foot_x=None) -> dict:
+    """Override joint ranges (and optionally the sole x extent); returns the previous values."""
+    global FOOT_X
+    prev = {"ranges": {jn: JOINTS[jn]["range"] for jn in ranges}, "foot_x": FOOT_X}
+    for jn, r in ranges.items():
+        JOINTS[jn]["range"] = tuple(r)
+    if foot_x is not None:
+        FOOT_X = tuple(foot_x)
+    bracket_params.cache_clear()
+    return prev
+
+
+def restore(prev: dict):
+    configure(prev["ranges"], prev["foot_x"])
+
+
 # --------------------------------------------------------------------------- kinematics
 def rot(axis, deg) -> np.ndarray:
     a = np.asarray(axis, float)

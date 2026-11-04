@@ -1,0 +1,8 @@
+{
+  "autodeskProduct": "Fusion360",
+  "type": "script",
+  "author": "OLLIE / FRCstack",
+  "description": {"": "Creates OLLIE's 22 revolute joints (with limits) on the imported ollie-stand.step"},
+  "supportedOS": "windows|mac",
+  "editEnabled": true
+}

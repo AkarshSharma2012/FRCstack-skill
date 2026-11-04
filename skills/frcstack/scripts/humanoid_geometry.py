@@ -30,6 +30,23 @@ class Part:
     kind: str           # printed | purchased
 
 
+# style knobs (0 / defaults = original $700 humanoid; OLLIE turns the rounding on)
+TUBE_FILLET = 0.0
+FOOT_FILLET = 0.0
+STRAP_X = (-40, 55)
+
+
+def _rz(s, r):
+    """Round the edges parallel to Z (r <= 0: unchanged)."""
+    if r <= 0:
+        return s
+    return _cq().Workplane(obj=s).edges("|Z").fillet(r).val()
+
+
+def _tube(outer, inner):
+    return hb.cut(_rz(outer, TUBE_FILLET), _rz(inner, max(TUBE_FILLET - 3.0, 0.0)))
+
+
 def _cq():
     import cadquery as cq
     return cq
@@ -119,8 +136,8 @@ def leg(side) -> dict:
     hp_m, hp_i = bracket(j["hip_pitch"])
     z_hp_bridge = L.Z_HIP_PITCH - L.bracket_params(j["hip_pitch"])[1] - hb.TB
     z_knee_end = L.Z_KNEE + hb.CR_END
-    tube = hb.cut(W(-12, 12, 25.4, 64.0, z_knee_end - 0.5, z_hp_bridge + 0.6, s),
-                  W(-9, 9, 28.4, 61.0, z_knee_end - 2, z_hp_bridge + 2, s))
+    tube = _tube(W(-12, 12, 25.4, 64.0, z_knee_end - 0.5, z_hp_bridge + 0.6, s),
+                 W(-9, 9, 28.4, 61.0, z_knee_end - 2, z_hp_bridge + 2, s))
     P[f"thigh_{side}"] = (f"thigh_{side}", _recut(hb.fuse(hp_m, tube, cradle(j["knee"])), j["hip_pitch"]))
     P[f"hip_pitch_idler_{side}"] = (f"thigh_{side}", hp_i)
 
@@ -128,8 +145,8 @@ def leg(side) -> dict:
     ap_m, ap_i = bracket(j["ankle_pitch"])
     z_kn_bridge = L.Z_KNEE - L.bracket_params(j["knee"])[1] - hb.TB
     z_ap_bridge = L.Z_ANKLE_PITCH + L.bracket_params(j["ankle_pitch"])[1] + hb.TB
-    tube = hb.cut(W(-12, 12, 25.4, 64.0, z_ap_bridge - 0.6, z_kn_bridge + 0.6, s),
-                  W(-9, 9, 28.4, 61.0, z_ap_bridge - 2, z_kn_bridge + 2, s))
+    tube = _tube(W(-12, 12, 25.4, 64.0, z_ap_bridge - 0.6, z_kn_bridge + 0.6, s),
+                 W(-9, 9, 28.4, 61.0, z_ap_bridge - 2, z_kn_bridge + 2, s))
     P[f"shin_{side}"] = (f"shin_{side}", _recut(hb.fuse(kn_m, tube, ap_m), j["knee"], j["ankle_pitch"]))
     P[f"knee_idler_{side}"] = (f"shin_{side}", kn_i)
     P[f"ankle_pitch_idler_{side}"] = (f"shin_{side}", ap_i)
@@ -143,13 +160,13 @@ def leg(side) -> dict:
     ar_m, ar_i = bracket(j["ankle_roll"])
     z_ar_bridge = L.Z_ANKLE_ROLL - L.bracket_params(j["ankle_roll"])[1] - hb.TB
     x0, x1 = L.X_ANKLE_ROLL + hb.Z_IDLER_IN, L.X_ANKLE_ROLL + hb.Z_HI
-    foot = W(L.FOOT_X[0], L.FOOT_X[1], L.LEG_Y - L.FOOT_HY, L.LEG_Y + L.FOOT_HY, L.SOLE_T, 10, s)
-    foot = hb.cut(foot, *[_zhole(x, s * y, 2.6) for x in (-40, 55) for y in (20, 70)])   # lightening/strap
+    foot = _rz(W(L.FOOT_X[0], L.FOOT_X[1], L.LEG_Y - L.FOOT_HY, L.LEG_Y + L.FOOT_HY, L.SOLE_T, 10, s), FOOT_FILLET)
+    foot = hb.cut(foot, *[_zhole(x, s * y, 2.6) for x in STRAP_X for y in (20, 70)])   # lightening/strap
     conn = W(x0, x1, 33, 57, 9.5, z_ar_bridge + 0.6, s)
     P[f"foot_{side}"] = (f"foot_{side}", _recut(hb.fuse(ar_m, conn, foot), j["ankle_roll"]))
     P[f"ankle_roll_idler_{side}"] = (f"foot_{side}", ar_i)
-    P[f"sole_tpu_{side}"] = (f"foot_{side}", W(L.FOOT_X[0], L.FOOT_X[1], L.LEG_Y - L.FOOT_HY,
-                                               L.LEG_Y + L.FOOT_HY, 0, L.SOLE_T, s))
+    P[f"sole_tpu_{side}"] = (f"foot_{side}", _rz(W(L.FOOT_X[0], L.FOOT_X[1], L.LEG_Y - L.FOOT_HY,
+                                                   L.LEG_Y + L.FOOT_HY, 0, L.SOLE_T, s), FOOT_FILLET))
     for k in L.LEG_JOINTS:
         P[f"servo_{k}_{side}"] = (L.JOINTS[j[k]]["body"], servo(j[k]))
     return P
@@ -189,8 +206,8 @@ def arm(side) -> dict:
     em, ei = bracket(el)
     px, py, pz = L.GRIP_P
     z_br = L.Z_ELBOW - L.bracket_params(el)[1] - hb.TB
-    spine = hb.cut(W(-12, 12, 83.4, 118.0, pz + 18.0, z_br + 0.6, s),
-                   W(-9, 9, 86.4, 115.0, pz + 17, z_br + 2, s))
+    spine = _tube(W(-12, 12, 83.4, 118.0, pz + 18.0, z_br + 0.6, s),
+                  W(-9, 9, 86.4, 115.0, pz + 17, z_br + 2, s))
     holder = W(px - 10, px + 8, 94.0, 118.0, pz - 8, pz + 20.5, s)
     pocket = inJ(gr, hb.fuse(hb.box(-6.0, 17.6, -6.2, 6.2, -22.2, 1.0), hb.cyl_z(4.0, -1, 4)))
     holder = hb.cut(holder, pocket)
