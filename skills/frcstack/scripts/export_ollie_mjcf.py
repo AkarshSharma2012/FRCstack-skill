@@ -42,17 +42,22 @@ def link_material(ln):
 
 
 def export_meshes(P, out):
+    """One STL per (link, colour) so the sim shows the real paint scheme.  Returns {link: [(mesh, rgba)]}."""
     import cadquery as cq
-    from OCP.StlAPI import StlAPI_Writer  # noqa: F401  (ensures OCP present)
+    import build_ollie as B
     groups = {}
     for n, p in P.items():
-        groups.setdefault(OG.fusion_link(n, p), []).append(p.shape)
+        rgba = tuple(round(v, 3) for v in B.color(n, p.material))
+        groups.setdefault((OG.fusion_link(n, p), rgba), []).append(p.shape)
     (out / "meshes").mkdir(parents=True, exist_ok=True)
-    for ln, shapes in groups.items():
-        comp = cq.Compound.makeCompound(shapes)
-        path = out / "meshes" / f"{ln}.stl"
-        cq.exporters.export(comp, str(path), tolerance=0.4, angularTolerance=0.35)
-    return sorted(groups)
+    vis = {}
+    for (ln, rgba), shapes in groups.items():
+        k = len(vis.get(ln, []))
+        name = f"{ln}__{k}"
+        cq.exporters.export(cq.Compound.makeCompound(shapes), str(out / "meshes" / f"{name}.stl"),
+                            tolerance=0.4, angularTolerance=0.35)
+        vis.setdefault(ln, []).append((name, rgba))
+    return vis
 
 
 def tree():
@@ -63,7 +68,7 @@ def tree():
     return joints, children
 
 
-def body_xml(ln, origin, joints, children, mass, comz, depth):
+def body_xml(ln, origin, joints, children, mass, comz, depth, vis=None):
     pad = "  " * depth
     out = []
     jn = next((k for k, j in joints.items() if j["child"] == ln), None)
@@ -86,12 +91,13 @@ def body_xml(ln, origin, joints, children, mass, comz, depth):
     com = (np.array(comz.get(ln, here)) - here) * 1e-3
     out.append(f'{pad}  <inertial pos="{_fmt(com)}" mass="{m:.5g}" diaginertia="{_fmt(_inertia_guess(ln, m))}"/>')
     off = (-here) * 1e-3
-    out.append(f'{pad}  <geom name="vis_{ln}" type="mesh" mesh="{ln}" pos="{_fmt(off)}" material="{link_material(ln)}" '
-               f'class="visual"/>')
+    for mname, _ in (vis or {}).get(ln, []):
+        out.append(f'{pad}  <geom name="vis_{mname}" type="mesh" mesh="{mname}" pos="{_fmt(off)}" '
+                   f'material="mat_{mname}" class="visual"/>')
     for g in contact_geoms(ln, here):
         out.append(f"{pad}  {g}")
     for c in children.get(ln, []):
-        out += body_xml(joints[c]["child"], here, joints, children, mass, comz, depth + 1)
+        out += body_xml(joints[c]["child"], here, joints, children, mass, comz, depth + 1, vis)
     out.append(f"{pad}</body>")
     return out
 
@@ -172,7 +178,8 @@ def main(out_dir):
     for ln in wmass:
         mass[ln] = wmass[ln]
         comz[ln] = wcom[ln] / wmass[ln]
-    links = export_meshes(P, out)
+    vis = export_meshes(P, out)
+    links = sorted(vis)
     joints, children = tree()
     excl = [f'<exclude body1="{j["parent"]}" body2="{j["child"]}"/>' for j in joints.values()]
     xml = [
@@ -196,7 +203,11 @@ def main(out_dir):
         '    <material name="tire" rgba="0.13 0.14 0.16 1"/>',
         '    <material name="orange" rgba="1 0.42 0.17 1"/>',
     ]
-    xml += [f'    <mesh name="{ln}" file="{ln}.stl" scale="0.001 0.001 0.001"/>' for ln in links]
+    for ln, items in vis.items():
+        for mname, rgba in items:
+            spec = 0.6 if rgba[:3] in ((0.72, 0.74, 0.77),) else 0.35
+            xml.append(f'    <mesh name="{mname}" file="{mname}.stl" scale="0.001 0.001 0.001"/>')
+            xml.append(f'    <material name="mat_{mname}" rgba="{_fmt(rgba)}" specular="{spec}" shininess="0.5"/>')
     xml += ['  </asset>', '  <worldbody>',
             '    <light pos="0.6 -0.6 2.0" dir="-0.3 0.3 -1" diffuse="0.8 0.8 0.8" castshadow="true"/>',
             '    <geom name="floor" type="plane" size="6 6 0.05" material="floor" contype="1" conaffinity="1"/>',
@@ -205,7 +216,7 @@ def main(out_dir):
             '    <geom name="table_leg2" type="box" pos="1.62 -0.42 0.225" size="0.015 0.015 0.225" rgba=".45 .34 .24 1"/>',
             '    <geom name="table_leg3" type="box" pos="2.18 0.42 0.225" size="0.015 0.015 0.225" rgba=".45 .34 .24 1"/>',
             '    <geom name="table_leg4" type="box" pos="2.18 -0.42 0.225" size="0.015 0.015 0.225" rgba=".45 .34 .24 1"/>']
-    body = body_xml("base", np.zeros(3), joints, children, mass, comz, 2)
+    body = body_xml("base", np.zeros(3), joints, children, mass, comz, 2, vis)
     body[0] = body[0].replace('pos="0 0 0"', 'pos="0 0 0.002"')
     xml += body
     xml += ['  </worldbody>', '  <contact>'] + [f"    {e}" for e in excl] + ['  </contact>', '  <actuator>']
