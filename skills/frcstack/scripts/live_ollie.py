@@ -26,7 +26,7 @@ import ollie_ctrl as C
 import sim_ollie as S
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_XML = HERE.parents[2] / ".frcstack" / "out" / "ollie-sim" / "ollie.xml"
+DEFAULT_XML = HERE.parents[2] / ".frcstack" / "out" / "ollie-sim-v2" / "ollie.xml"
 MODES = ("walk", "skate", "crawl")
 TOUR_S = {"walk": 30.0, "skate": 12.0, "crawl": 22.0}
 KEY = {49: "walk", 50: "skate", 51: "crawl"}
@@ -39,13 +39,13 @@ class Walk:
     def __init__(self, sim):
         import hashlib
         import pickle
-        key = hashlib.md5(Path(sim.xml).read_bytes() + b"walk12-0.06-0.03-1.2-0.9").hexdigest()[:10]
+        key = hashlib.md5(Path(sim.xml).read_bytes() + b"walk12-0.07-0.03-1.6-0.9").hexdigest()[:10]
         cache = Path(sim.xml).with_name(f"walk_plan_{key}.pkl")
         if cache.exists():
             self.plan = pickle.loads(cache.read_bytes())
             return
         print("planning walk (first run only, ~30 s) ...", flush=True)
-        self.plan, _ = C.walk_plan(sim, steps=12, dt=0.02, step_len=0.06, lift=0.03, t_shift=1.2, t_swing=0.9)
+        self.plan, _ = C.walk_plan(sim, steps=12, dt=0.02, step_len=0.07, lift=0.03, t_shift=1.6, t_swing=0.9)
         cache.write_bytes(pickle.dumps(self.plan))
 
     def reset(self, sim):
@@ -98,7 +98,7 @@ class Crawl:
         self.gt = dict(S.CRAWL_GAIT)
 
     def reset(self, sim):
-        beta = math.radians(69.0)
+        beta = math.radians(S.CRAWL_PITCH)
         quat = np.array([math.cos(beta / 2), 0, math.sin(beta / 2), 0])
         sim.set_pose((1.30, 0, 0.0), quat, S.CRAWL)
         sim.drop(["knee_pad_L", "knee_pad_R", "paw_L", "paw_R"], gap=0.0005)
@@ -115,21 +115,9 @@ class Crawl:
         if self.t0 is None:
             self.t0 = d.time
         gt, tt = self.gt, d.time - self.t0
-        ph = 2 * math.pi * tt / gt["period"]
-        amp = min(1.0, tt / 1.0)
-        a, b = math.sin(ph), math.sin(ph + math.pi)
-        q = dict(S.CRAWL)
-        q["hip_pitch_L"] += amp * gt["hip"] * a
-        q["hip_pitch_R"] += amp * gt["hip"] * b
-        q["knee_L"] -= amp * gt["knee"] * max(0.0, math.cos(ph))
-        q["knee_R"] -= amp * gt["knee"] * max(0.0, math.cos(ph + math.pi))
-        q["shoulder_L"] -= amp * gt["shoulder"] * b
-        q["shoulder_R"] -= amp * gt["shoulder"] * a
-        q["elbow_L"] -= amp * gt["elbow"] * max(0.0, math.cos(ph + math.pi))
-        q["elbow_R"] -= amp * gt["elbow"] * max(0.0, math.cos(ph))
-        roll, _ = sim.rpy()
-        q["hip_roll_L"] = q.get("hip_roll_L", 0.0) - math.degrees(0.4 * roll)
-        q["hip_roll_R"] = q.get("hip_roll_R", 0.0) - math.degrees(0.4 * roll)
+        q = S.crawl_targets(gt, tt)
+        st = S.side_tilt(sim)
+        q["hip_roll_L"] = q["hip_roll_R"] = math.degrees(0.4 * st)
         S.ctrl_targets(sim, q)
         for i in range(d.ncon):
             c = d.contact[i]
@@ -143,6 +131,7 @@ class Live:
     def __init__(self, xml):
         self.sim = C.Sim(str(xml))
         self.sim.xml = str(xml)
+        S.load_poses(xml)
         self.ctl = {"walk": Walk(self.sim), "skate": Skate(self.sim), "crawl": Crawl(self.sim)}
         self.mode, self.pending, self.paused, self.follow, self.tour = "walk", None, False, True, False
 
@@ -188,7 +177,7 @@ class Live:
             self.fell = True
         if self.mode == "skate" and (sim.com()[2] < 0.2 or abs(pitch - self.ctl["skate"].p0) > 0.5):
             self.fell = True
-        if self.mode == "crawl" and abs(roll) > 0.8:
+        if self.mode == "crawl" and (abs(S.side_tilt(sim)) > math.radians(25) or sim.com()[2] < 0.08):
             self.fell = True
         if self.tour and d.time > TOUR_S[self.mode]:
             self.pending = MODES[(MODES.index(self.mode) + 1) % 3]

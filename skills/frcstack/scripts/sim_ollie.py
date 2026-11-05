@@ -87,9 +87,9 @@ def summarize(sim, name, t0, p0, peak, fell, extra=None):
 
 
 # --------------------------------------------------------------------------- walk
-def run_walk(xml, rec_video, steps=6, step_len=0.06):
+def run_walk(xml, rec_video, steps=6, step_len=0.07):
     sim = C.Sim(xml)
-    plan, ik_err = C.walk_plan(sim, steps=steps, dt=0.02, step_len=step_len, lift=0.03, t_shift=1.2, t_swing=0.9)
+    plan, ik_err = C.walk_plan(sim, steps=steps, dt=0.02, step_len=step_len, lift=0.03, t_shift=1.6, t_swing=0.9)
     _, q0, _, b0 = plan[0]
     sim.set_pose((b0[0], b0[1], 0.0), (1, 0, 0, 0), q0)
     sim.drop(["sole_L", "sole_R"])
@@ -356,14 +356,48 @@ CRAWL = {**{f"{j}_{s}": v for s in "LR" for j, v in (("hip_pitch", -61.5), ("kne
          "neck_tilt": -45.0}
 
 
-CRAWL_GAIT = dict(period=1.0, hip=14.0, knee=8.0, shoulder=16.0, elbow=12.0)   # found by diag_crawl.py sweep
+CRAWL_GAIT = dict(period=1.0, hip=-22.0, knee=20.0, sh=-24.0, el=12.0)   # diag_crawl_v2.py: 1.39 m in 10 s, forward
+CRAWL_PITCH = 69.0
 
 
-def run_crawl(xml, rec_video, seconds=18.0, gait=None, start_x=1.30):
+def crawl_targets(g, tt):
+    """Diagonal-pair crawl: each leg moves with the opposite arm; knee lifts on the forward stroke, the paw
+    on the back stroke."""
+    ph = 2 * math.pi * tt / g["period"]
+    amp = min(1.0, tt / 2.0)
+    q = dict(CRAWL)
+    for s, off in (("L", 0.0), ("R", math.pi)):
+        p = ph + off
+        o = "R" if s == "L" else "L"
+        q[f"hip_pitch_{s}"] += amp * g["hip"] * math.sin(p)
+        q[f"knee_{s}"] += amp * g["knee"] * max(0.0, math.sin(p))
+        q[f"shoulder_{o}"] += amp * g["sh"] * math.sin(p)
+        q[f"elbow_{o}"] -= amp * g["el"] * max(0.0, math.sin(p + math.pi))
+    return q
+
+
+def side_tilt(sim):
+    """Sideways tilt of the torso (rad) that works when the torso is pitched near horizontal."""
+    R = sim.d.xmat[sim.base].reshape(3, 3)
+    return math.asin(float(np.clip(R[2, 1], -1, 1)))
+
+
+def load_poses(xml):
+    """Use the skate pose solved from the CAD (poses.json next to the model) when present.  The crawl keeps
+    the sweep-tested CRAWL pose: the CAD-solved one (75 deg pitch) tips sideways while crawling."""
+    global SKATE
+    p = Path(xml).with_name("poses.json")
+    if not p.exists():
+        return
+    d = json.loads(p.read_text())
+    SKATE = {k: v for k, v in d["skate"].items() if k.split("_")[0] in ("hip", "knee", "ankle")}
+
+
+def run_crawl(xml, rec_video, seconds=24.0, gait=None, start_x=1.20):
     sim = C.Sim(xml)
     m, d = sim.m, sim.d
     gt = dict(CRAWL_GAIT, **(gait or {}))
-    beta = math.radians(69.0)
+    beta = math.radians(CRAWL_PITCH)
     quat = np.array([math.cos(beta / 2), 0, math.sin(beta / 2), 0])
     sim.set_pose((start_x, 0, 0.0), quat, CRAWL)
     sim.drop(["knee_pad_L", "knee_pad_R", "paw_L", "paw_R"], gap=0.0005)
@@ -379,22 +413,10 @@ def run_crawl(xml, rec_video, seconds=18.0, gait=None, start_x=1.30):
     tb = [sim.gid(n) for n in ("table_top",)]
     while d.time - t0 < seconds:
         tt = d.time - t0
-        ph = 2 * math.pi * tt / period
-        amp = min(1.0, tt / 1.0)
-        a, b = math.sin(ph), math.sin(ph + math.pi)
-        q = dict(CRAWL)
-        # diagonal pairs: left knee + right paw, then right knee + left paw; lift on the forward half
-        q["hip_pitch_L"] += amp * gt["hip"] * a
-        q["hip_pitch_R"] += amp * gt["hip"] * b
-        q["knee_L"] -= amp * gt["knee"] * max(0.0, math.cos(ph))
-        q["knee_R"] -= amp * gt["knee"] * max(0.0, math.cos(ph + math.pi))
-        q["shoulder_L"] -= amp * gt["shoulder"] * b
-        q["shoulder_R"] -= amp * gt["shoulder"] * a
-        q["elbow_L"] -= amp * gt["elbow"] * max(0.0, math.cos(ph + math.pi))
-        q["elbow_R"] -= amp * gt["elbow"] * max(0.0, math.cos(ph))
-        roll, pitch = sim.rpy()
-        q["hip_roll_L"] = q.get("hip_roll_L", 0.0) - math.degrees(0.4 * roll)
-        q["hip_roll_R"] = q.get("hip_roll_R", 0.0) - math.degrees(0.4 * roll)
+        q = crawl_targets(gt, tt)
+        st = side_tilt(sim)
+        q["hip_roll_L"] = q["hip_roll_R"] = math.degrees(0.4 * st)
+        roll = st
         ctrl_targets(sim, q)
         mujoco.mj_step(m, d)
         track(sim, peak)
@@ -404,7 +426,7 @@ def run_crawl(xml, rec_video, seconds=18.0, gait=None, start_x=1.30):
                 table_hit = True
         top = max(d.geom_xpos[g][2] for g in range(m.ngeom) if m.geom_bodyid[g] > 0)
         max_top = max(max_top, top)
-        if abs(roll) > 0.8:
+        if abs(roll) > math.radians(25) or sim.com()[2] < 0.08:
             fell = True
         if k % int(1 / (FPS * m.opt.timestep)) == 0:
             c = sim.com()
@@ -415,7 +437,7 @@ def run_crawl(xml, rec_video, seconds=18.0, gait=None, start_x=1.30):
     return summarize(sim, "crawl", t0, p0, peak, fell, {
         "start_x_m": round(float(p0[0]), 3), "end_x_m": round(float(x_end), 3),
         "passed_under_table": bool(x_end > 1.9 and not table_hit), "touched_table": table_hit,
-        "max_body_height_m": round(float(max_top), 3), "table_underside_m": 0.345, "gait": gt}), rec.close()
+        "max_body_height_m": round(float(max_top), 3), "table_underside_m": 0.45, "gait": gt}), rec.close()
 
 
 def main():
@@ -425,6 +447,7 @@ def main():
     ap.add_argument("--no-video", action="store_true")
     ap.add_argument("--only")
     a = ap.parse_args()
+    load_poses(a.xml)
     out = Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     runs = {"walk": run_walk, "skate": run_skate, "crawl": run_crawl}

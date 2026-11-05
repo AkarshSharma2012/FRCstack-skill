@@ -17,14 +17,19 @@ from scipy.linalg import solve_discrete_are
 
 LEG = ("hip_yaw", "hip_roll", "hip_pitch", "knee", "ankle_pitch", "ankle_roll")
 FOOT_FWD = 0.031          # sole centre is 31 mm ahead of the foot-body origin (ankle-roll axis)
+STS3250_NM = 50 * 0.0980665 * 11.1 / 12.0      # Feetech STS3250 drop-in upgrade (same case as ST3215)
+STRONG = tuple(f"{j}_{s}" for j in ("hip_roll", "hip_pitch", "knee") for s in "LR")
 
 
 class Sim:
-    def __init__(self, xml, kp=60.0, kv=1.2):
+    def __init__(self, xml, kp=60.0, kv=1.2, strong=False):
         self.m = mujoco.MjModel.from_xml_path(xml)
         self.d = mujoco.MjData(self.m)
         m = self.m
         self.act = {mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_ACTUATOR, i)[4:]: i for i in range(m.nu)}
+        if strong:
+            for n in STRONG:
+                m.actuator_forcerange[self.act[n]] = (-STS3250_NM, STS3250_NM)
         # ST3215 position loop: stiff until the torque limit (stall reached at ~2.6 deg error with kp=60)
         for n, i in self.act.items():
             if not n.startswith(("wheel", "gripper", "neck")):

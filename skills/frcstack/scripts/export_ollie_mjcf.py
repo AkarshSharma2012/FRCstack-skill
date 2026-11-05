@@ -119,17 +119,18 @@ def contact_geoms(ln, here):
             g.append(f'<geom name="tire_{side}" type="cylinder" pos="{_fmt(c)}" size="{OL.WHEEL_R * 1e-3:.4f} 0.0055" '
                      f'euler="90 0 0" class="contact" friction="1.2 0.02 0.002"/>')
         if ln == f"shin_{side}":
-            yk = sorted((s * 32, s * 57))
-            box(f"knee_pad_{side}", 12, 26, yk[0], yk[1], 140, 195)
+            k, zk = OL.KNEE_PAD, L.Z_KNEE
+            yk = sorted((s * k[2], s * k[3]))
+            box(f"knee_pad_{side}", k[0], k[1], yk[0], yk[1], zk + k[4], zk + k[5])
         if ln == f"forearm_{side}":
-            px, _, pz = L.GRIP_P
-            yp = sorted((s * 98, s * 126))
-            box(f"paw_{side}", px - 52, px - 42, yp[0], yp[1], pz - 68, pz - 58)
+            b = OL.paw_box()
+            yp = sorted((s * b[2], s * b[3]))
+            box(f"paw_{side}", b[0], b[1], yp[0], yp[1], b[4], b[5])
     if ln == "base":
-        box("torso_bump", -45, 45, -75, 75, 493, 677, cls="bumper")
+        box("torso_bump", -62, 80, -75, 75, L.Z_PELVIS, L.Z_TOP + 26, cls="bumper")
     if ln == "head":
         tz = L.JOINTS["neck_tilt"]["p"][2]
-        box("head_bump", -36, 46, -66, 66, tz - 12, tz + 34, cls="bumper")
+        box("head_bump", -44, 72, -62, 62, tz - 12, tz + 42, cls="bumper")
     return g
 
 
@@ -199,11 +200,11 @@ def main(out_dir):
     xml += ['  </asset>', '  <worldbody>',
             '    <light pos="0.6 -0.6 2.0" dir="-0.3 0.3 -1" diffuse="0.8 0.8 0.8" castshadow="true"/>',
             '    <geom name="floor" type="plane" size="6 6 0.05" material="floor" contype="1" conaffinity="1"/>',
-            '    <geom name="table_top" type="box" pos="1.9 0 0.36" size="0.3 0.45 0.015" rgba=".55 .42 .3 1"/>',
-            '    <geom name="table_leg1" type="box" pos="1.62 0.42 0.17" size="0.015 0.015 0.175" rgba=".45 .34 .24 1"/>',
-            '    <geom name="table_leg2" type="box" pos="1.62 -0.42 0.17" size="0.015 0.015 0.175" rgba=".45 .34 .24 1"/>',
-            '    <geom name="table_leg3" type="box" pos="2.18 0.42 0.17" size="0.015 0.015 0.175" rgba=".45 .34 .24 1"/>',
-            '    <geom name="table_leg4" type="box" pos="2.18 -0.42 0.17" size="0.015 0.015 0.175" rgba=".45 .34 .24 1"/>']
+            '    <geom name="table_top" type="box" pos="1.9 0 0.465" size="0.3 0.45 0.015" rgba=".55 .42 .3 1"/>',
+            '    <geom name="table_leg1" type="box" pos="1.62 0.42 0.225" size="0.015 0.015 0.225" rgba=".45 .34 .24 1"/>',
+            '    <geom name="table_leg2" type="box" pos="1.62 -0.42 0.225" size="0.015 0.015 0.225" rgba=".45 .34 .24 1"/>',
+            '    <geom name="table_leg3" type="box" pos="2.18 0.42 0.225" size="0.015 0.015 0.225" rgba=".45 .34 .24 1"/>',
+            '    <geom name="table_leg4" type="box" pos="2.18 -0.42 0.225" size="0.015 0.015 0.225" rgba=".45 .34 .24 1"/>']
     body = body_xml("base", np.zeros(3), joints, children, mass, comz, 2)
     body[0] = body[0].replace('pos="0 0 0"', 'pos="0 0 0.002"')
     xml += body
@@ -211,6 +212,15 @@ def main(out_dir):
     xml += [f"    {a}" for a in actuators(joints)]
     xml += ['  </actuator>', '</mujoco>']
     (out / "ollie.xml").write_text("\n".join(xml))
+    import json
+    import ollie_physics as OP
+    poses = {}
+    q, Tb, _ = OP.skate_pose(mass, comz)
+    poses["skate"] = {k: round(float(v), 2) for k, v in q.items()}
+    q, Tb, beta = OP.crawl_pose(mass, comz)
+    poses["crawl"] = {k: round(float(v), 2) for k, v in q.items()}
+    poses["crawl_pitch_deg"] = float(beta)
+    (out / "poses.json").write_text(json.dumps(poses, indent=1))
     print("wrote", out / "ollie.xml", "links", len(links), "mass g", round(sum(mass.values())))
 
 
