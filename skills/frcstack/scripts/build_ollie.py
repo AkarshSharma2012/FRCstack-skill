@@ -29,21 +29,34 @@ import ollie_geometry as OG
 import ollie_layout as OL
 import ollie_physics as OP
 
-COLORS = dict(BH.COLORS, acrylic=(0.08, 0.09, 0.11, 0.85))
-SHELL = ("torso_shell", "torso_back_cover", "torso_top_plate", "head_shell", "thigh_", "shin_",
-         "upper_arm_", "forearm_", "foot_", "neck_turntable")
-ORANGE = ("tpu", "ear_cap", "wheel_hub")
+COLORS = dict(BH.COLORS, acrylic=(0.08, 0.09, 0.11, 0.85), al=(0.72, 0.74, 0.77, 1.0), petg=(0.07, 0.2, 0.62, 1.0))
+BLUE = (0.07, 0.2, 0.62, 1.0)            # R9 Icon Blue
+BLACK = (0.08, 0.085, 0.095, 1.0)        # matte black accents
+SILVER = (0.80, 0.81, 0.83, 1.0)         # white/silver stripes
+GOLD = (0.85, 0.62, 0.15, 1.0)           # gold wheels, like the R9 fork/wheels
+BLACK_PANELS = ("fair_back", "fair_waist", "fair_keel", "fair_tailwing", "fair_bellypan", "fair_head_rear",
+                "fair_head_duct", "fair_head_wing", "fair_winglet", "fair_shin_cuff", "fair_hipcap", "fair_hand",
+                "fair_head_crest", "fair_neck_collar")
+SILVER_PANELS = ("fair_stripe", "fair_thigh_stripe")
 
 
 def color(name, mat):
-    if any(k in name for k in ORANGE):
-        return (1.0, 0.42, 0.17, 1.0) if "tire" not in name else (0.14, 0.15, 0.17, 1.0)
-    if name == "light_diffuser":
-        return (0.5, 0.89, 1.0, 1.0)
-    if mat == "pla" and any(name.startswith(k) for k in SHELL):
-        return (0.96, 0.95, 0.93, 1.0)
+    if "tire" in name:
+        return (0.12, 0.12, 0.13, 1.0)
+    if "wheel_hub" in name:
+        return GOLD
+    if name.startswith("light_chevron") or name.startswith("eye_lens"):
+        return (0.35, 0.85, 1.0, 1.0)
+    if mat == "petg":
+        if name.startswith(SILVER_PANELS):
+            return SILVER
+        if name.startswith(BLACK_PANELS):
+            return BLACK
+        return BLUE
+    if mat == "tpu":
+        return (0.95, 0.25, 0.2, 1.0) if "pad" in name else (0.1, 0.1, 0.11, 1.0)
     if mat == "pla":
-        return (0.19, 0.2, 0.23, 1.0)
+        return (0.16, 0.17, 0.19, 1.0)
     return COLORS[mat]
 
 
@@ -82,6 +95,10 @@ def poses(mass, comz):
     deep = L.both(hip_pitch=-90, knee=120, ankle_pitch=-30, shoulder=-180, elbow=-100, gripper=28)
     deep.update(neck_tilt=-45, neck_pan=-90)
     out["extremes_crawl_depth"] = (deep, I4, None)
+    walk = L.both(hip_pitch=-20, knee=40, ankle_pitch=-20)
+    walk.update(hip_pitch_L=-45, knee_L=70, ankle_pitch_L=-25, hip_pitch_R=10, knee_R=20, ankle_pitch_R=-30,
+                shoulder_L=30, shoulder_R=-35, elbow_L=-20, elbow_R=-20)
+    out["walk_stride"] = (walk, I4, None)
     return roll, out
 
 
@@ -102,10 +119,13 @@ def check(P, mass, comz, skip):
             s = OP.statics(q, Tb, contacts, mass, comz)
             st = {k: v for k, v in s["torque_nm"].items() if L.JOINTS[k]["kind"] == "st"}
             sc = {k: v for k, v in s["torque_nm"].items() if L.JOINTS[k]["kind"] == "sc"}
-            w = max(st, key=lambda k: abs(st[k]))
+            w = max(st, key=lambda k: abs(st[k]) / OL.stall_nm(k))
+            ws = max(st, key=lambda k: abs(st[k]) / OL.stall_nm(k, True))
             r.update(contacts=s["contacts"], com_mm=s["com_mm"], support_margin_mm=s["support_margin_mm"],
                      balance_residual_n=s["balance_residual_n"], worst_st3215=w,
                      worst_st3215_nm=round(abs(st[w]), 3), worst_frac_of_stall=round(abs(st[w]) / L.ST_STALL_NM, 3),
+                     worst_with_sts3250_upgrade=ws,
+                     worst_frac_with_sts3250_upgrade=round(abs(st[ws]) / OL.stall_nm(ws, True), 3),
                      worst_sc09_frac_of_stall=round(max(abs(v) for v in sc.values()) / L.SC_STALL_NM, 3),
                      torque_nm={k: round(v, 3) for k, v in s["torque_nm"].items()})
         if name == "skate":
@@ -181,9 +201,10 @@ def main(argv=None):
     jrows = joints_json(out / "ollie-joints.json")
     rows = []
     for n, p in sorted(P.items()):
-        if p.kind == "printed":
+        if p.kind in ("printed", "machined"):
             bb = p.shape.BoundingBox()
-            rows.append([n, p.material.upper(), round(OG.mass_g(n, p), 1), f"{bb.xlen:.0f} x {bb.ylen:.0f} x {bb.zlen:.0f}"])
+            rows.append([n, {"al": "6061-T6 CNC", "petg": "PETG"}.get(p.material, p.material.upper()),
+                         round(OG.mass_g(n, p), 1), f"{bb.xlen:.0f} x {bb.ylen:.0f} x {bb.zlen:.0f}"])
     with (out / "ollie-print-list.csv").open("w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["part", "material", "est_mass_g", "bbox_mm"])
@@ -193,13 +214,14 @@ def main(argv=None):
     hits = sum(len(r.get("interference", [])) + len(r.get("ground_penetration", [])) for r in rep.values())
     report = {
         "status": "PROPOSED - not fabrication-ready, not FEA-verified, not prototype-tested",
-        "parts": len(P), "printed_parts": len(rows), "purchased_parts": len(P) - len(rows),
+        "parts": len(P), "made_parts": len(rows), "purchased_parts": len(P) - len(rows),
+        "cnc_aluminium_parts": sum(1 for p in P.values() if p.material == "al"),
         "joints": len(jrows), "overall_bbox_mm": [round(bb.xlen, 1), round(bb.ylen, 1), round(bb.zlen, 1)],
         "estimated_mass_g": round(sum(mass.values())), "printed_mass_g": round(sum(r[2] for r in rows)),
         "walk_single_support_roll_deg": roll, "poses": rep, "problems_total": hits,
         "step_bytes": steps, "build_seconds": round(time.time() - t0, 1)}
     (out / "ollie-report.json").write_text(json.dumps(report, indent=2, default=float))
-    print(json.dumps({k: report[k] for k in ("parts", "printed_parts", "joints", "overall_bbox_mm",
+    print(json.dumps({k: report[k] for k in ("parts", "made_parts", "cnc_aluminium_parts", "joints", "overall_bbox_mm",
                                               "estimated_mass_g", "problems_total", "build_seconds")}))
     for n, r in rep.items():
         for h in r.get("interference", [])[:15] + r.get("ground_penetration", [])[:10]:

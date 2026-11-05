@@ -59,9 +59,11 @@ def contact_sets() -> dict:
         out[f"wheel_{side}"] = (f"wheel_{side}", [(OL.WHEEL_X + OL.WHEEL_R * math.cos(a), s * y,
                                                    OL.WHEEL_Z + OL.WHEEL_R * math.sin(a))
                                                   for a in t for y in (49.5, 60.5)])
-        out[f"knee_{side}"] = (f"shin_{side}", _box_pts(25, 26, 32, 57, 140, 195, s))
-        px, py, pz = L.GRIP_P
-        out[f"paw_{side}"] = (f"forearm_{side}", _box_pts(px - 52, px - 42, 98, 126, pz - 68, pz - 67, s))
+        k = OL.KNEE_PAD
+        zk = L.Z_KNEE
+        out[f"knee_{side}"] = (f"shin_{side}", _box_pts(k[1] - 1, k[1], k[2], k[3], zk + k[4], zk + k[5] - 8, s))
+        b = OL.paw_box()
+        out[f"paw_{side}"] = (f"forearm_{side}", _box_pts(b[0], b[1], b[2], b[3], b[4], b[4] + 1, s))
     return out
 
 
