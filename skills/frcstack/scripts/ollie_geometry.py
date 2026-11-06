@@ -1,9 +1,9 @@
 """
 ollie_geometry.py -- OLLIE v2 skeleton + assembly (zero pose, world mm).
 
-Structure (the strong part): every servo U-bracket now has a CNC 3 mm 6061 horn plate and a 4 mm 6061
-idler plate (printed bridge between them), thigh and shin bones are 1 x 1.5 in 6061 box tube (FRC stock)
-with printed end blocks, an aluminium pelvis plate and two aluminium side frame plates carry the torso.
+Structure (the strong part): every servo U-bracket has a CNC 6061 horn plate and idler plate, both cut
+from one bought 12 x 24 in sheet of 1/8 in (3.2 mm) 6061-T6 (printed bridge between them), thigh and shin
+bones are bought 1 x 1 x 1/16 in 6061 square tube with printed end blocks, an aluminium pelvis plate and two aluminium side frame plates carry the torso.
 Bodywork (the look) is in ollie_fairings.py.  PROPOSED DESIGN -- not built or tested.
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ from humanoid_geometry import W, Part, _ycyl, inJ, servo
 
 OL.apply()
 FUSION_LINK = {}                         # wheel parts ride on the foot for statics; Fusion spins them
-TUBE = (25.4, 25.4, 1.6)                 # 1 x 1 x 1/16 in 6061 square tube (FRC stock) (x, y, wall)
+TUBE = (25.4, 25.4, 1.6)                 # 1 x 1 x 1/16 in 6061 square tube, bought (x, y, wall)
 
 
 def _cq():
@@ -29,13 +29,25 @@ def _cq():
 
 # --------------------------------------------------------------------------- brackets
 def ubracket(jn):
-    """(horn plate Al 3 mm, printed bridge, idler plate Al 4 mm, plate envelope) in world coords."""
+    """(horn plate, printed bridge, idler plate, plate envelope) in world coords.
+    Both plates are 1/8 in (OL.AL_T) so every CNC plate comes from the same sheet."""
     phi, R, _ = L.bracket_params(jn)
     hull = hb.plate_hull(phi, R)
-    env = hb.prism(hull, hb.HF, hb.Z_HI)
-    plate = hb.cut(env, *hb._horn_holes(hb.Z_LO, hb.Z_HI), *hb._bridge_bolts(phi, R, hb.HF - 1, hb.Z_HI + 1, 1.7))
+    z_out = hb.HF + OL.AL_T
+    env = hb.prism(hull, hb.HF, z_out)
+    plate = hb.cut(env, *hb._horn_holes(hb.Z_LO, z_out), *hb._bridge_bolts(phi, R, hb.HF - 1, z_out + 1, 1.7))
     bridge = hb.prism(hb.bridge_poly(phi, R), hb.Z_IDLER_IN, hb.HF)
-    return inJ(jn, plate), inJ(jn, bridge), inJ(jn, hb.bracket_idler(phi, R)), inJ(jn, env)
+    z_lo = hb.Z_IDLER_IN - OL.AL_T
+    idler = hb.cut(hb.prism(hull, z_lo, hb.Z_IDLER_IN), *hb._horn_holes(z_lo, z_out),
+                   *hb._bridge_bolts(phi, R, z_lo - 1, hb.Z_IDLER_IN + 1, 1.7))
+    return inJ(jn, plate), inJ(jn, bridge), inJ(jn, idler), inJ(jn, env)
+
+
+def spacer_ring(jn):
+    """1 mm printed ring between the idler plate and the servo's idler disc (keeps the plate off the case).
+    PLA+ is fine here: it only sees the clamp load of the 4 M3 screws."""
+    ring = hb.cut(hb.cyl_z(9.0, hb.Z_IDLER_IN, -hb.HF), hb.cyl_z(4.5, hb.Z_IDLER_IN - 1, -hb.HF + 1))
+    return inJ(jn, hb.cut(ring, *hb._horn_holes(hb.Z_IDLER_IN - 1, -hb.HF + 1)))
 
 
 def bolt_tools(*jns):
@@ -77,6 +89,7 @@ def leg(side) -> dict:
         lk = L.bracket_link(j[k])
         P[f"{k}_plate_al_{side}"] = (lk, pl)
         P[f"{k}_idler_al_{side}"] = (lk, idl)
+        P[f"{k}_spacer_{side}"] = (lk, spacer_ring(j[k]))
     zr, zy = L.Z_HIP_ROLL, L.Z_HIP_YAW
     col = W(40.5, 44.5, 33, 57, zr + 16, zy + 21.6, s)
     lap = W(39.5, 40.6, 33, 57, zy - 19, zy + 21.6, s)
@@ -137,8 +150,8 @@ def arm(side) -> dict:
     sh, el, gr = f"shoulder_{side}", f"elbow_{side}", f"gripper_{side}"
     zx = L.Z_SHOULDER - (L.Z_ELBOW + L.bracket_params(el)[2])
     hull = hb.hull2d(hb.circle(0, 0, 14.0) + [(0, -hb.CR_Y), (zx, -hb.CR_Y), (zx, hb.CR_Y), (0, hb.CR_Y)])
-    P[f"shoulder_plate_al_{side}"] = (f"upper_arm_{side}", inJ(sh, hb.cut(hb.prism(hull, hb.HF, hb.HF + 3.0), *hb._horn_holes(hb.HF - 1, hb.HF + 4))))
-    y_spacer0 = L.SHOULDER_Y + hb.HF + 3.0
+    P[f"shoulder_plate_al_{side}"] = (f"upper_arm_{side}", inJ(sh, hb.cut(hb.prism(hull, hb.HF, hb.HF + OL.AL_T), *hb._horn_holes(hb.HF - 1, hb.HF + 4))))
+    y_spacer0 = L.SHOULDER_Y + hb.HF + OL.AL_T
     y_cr_in = L.ELBOW_Y + hb.CR_Z[0]
     spacer = W(-hb.CR_Y, hb.CR_Y, y_spacer0, y_cr_in + 0.4, L.Z_ELBOW + L.bracket_params(el)[2], L.Z_ELBOW + hb.CR_END, s)
     P[f"upper_arm_{side}"] = (f"upper_arm_{side}", hb.fuse(spacer, G.cradle(el)))
@@ -148,6 +161,7 @@ def arm(side) -> dict:
     pl, br, idl, env = ubracket(el)
     P[f"elbow_plate_al_{side}"] = (f"forearm_{side}", pl)
     P[f"elbow_idler_al_{side}"] = (f"forearm_{side}", idl)
+    P[f"elbow_spacer_{side}"] = (f"forearm_{side}", spacer_ring(el))
     px, py, pz = L.GRIP_P
     z_br = L.Z_ELBOW - L.bracket_params(el)[1] - hb.TB
     spine = G._tube(W(-12, 12, 83.4, 118.0, pz + 18.0, z_br + 0.6, s), W(-9, 9, 86.4, 115.0, pz + 17, z_br + 2, s))
