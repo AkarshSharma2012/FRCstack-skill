@@ -59,6 +59,10 @@ For `latest`, check current public team/event evidence and record the as-of date
 
 ## Create and improve Onshape CAD
 
+Use the [FRCDesign.org course index](references/frcdesign-course-index.md) to retrieve the relevant lesson and module guidance. Read [foundations](references/frcdesign-foundations.md) for frame, plate, assembly and transmission work, [integration](references/frcdesign-integration.md) for top-down layouts and subsystem packaging, and [mechanisms](references/frcdesign-mechanisms.md) for shooters, pivots, intakes and elevators. Apply the relevant methods to the current geometry and hardware.
+
+For drivetrain and transmission work, run the applicable [layout calculations and completeness checks](references/frcdesign-validation.md). Record evidence of the motor-to-wheel path, mounting and retention, interfaces and clearance before claiming a complete drivetrain. Keep measured generation time and verification time distinct.
+
 Apply the [team-grounded workflows](references/team-workflows.md) when selecting architecture, debugging interfaces and reviewing a design. Separate each team's documented practice from your proposed application; do not use a resource-limited reference to reduce the user's specified benchmark.
 
 For dimensioned custom rails and plates, use the [structural-part generators](references/structural-parts.md). Supply explicit dimensions and preserve design assumptions; only the rectangular-tube generator has executed native Onshape cases so far. Local geometry checks do not establish native history or whole-robot correctness.
