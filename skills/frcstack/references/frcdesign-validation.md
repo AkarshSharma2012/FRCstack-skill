@@ -15,6 +15,16 @@ python scripts/transmission_layout.py belt 18 36 --belt-teeth 80 --pitch-mm 5
 
 The spur case gives a 50.8 mm center distance and 3:1 reduction with reversed output. The belt case gives a 400 mm pitch length and approximately 131.7204 mm center distance. An equal 42T pair with a 131T, 5 mm belt gives 222.5 mm center distance. Transfer center spacing into the master layout and compare against the modeled shaft axes. Confirm tooth profile, pressure angle for gears, pulley flanges, installed tension range, engagement and vendor tolerances separately. Chain pitch geometry, idlers, crossed belts, profile shifts and loaded deflection require their own models.
 
+With CadQuery installed, export a continuous belt clearance envelope:
+
+```sh
+python scripts/transmission_layout.py belt-solid 42 42 --belt-teeth 131 --pitch-mm 5 --width-mm 15 --backing-thickness-mm 2 --output belt.step
+```
+
+The driver is at the origin, the driven axis is along +X, and both shaft axes are parallel to Z. The 2 mm backing is an illustrative clearance input centered on the pitch line. Use the purchased belt's documented profile and installed geometry to validate fit. Equal, unequal and reversed pulley cases are checked for valid solids and analytic volume. The STEP test checks the exported shape in both directions after reimport.
+
+The four am-2571 belt instances in the official FIRST 2026 KitBot STEP have approximately 222.548 mm longitudinal separation and 1.778 mm vertical offset between their wrap axes. This gives about 222.555 mm between parallel axes. Keep that source measurement separate from the nominal 222.5 mm result above.
+
 ## Evidence for a complete drivetrain
 
 1. Set design inputs and constraints before laying out the frame. Document the selected season, target wheelbase and track, ground clearance, bumper envelope, stock, manufacturing process and the selected drive architecture.

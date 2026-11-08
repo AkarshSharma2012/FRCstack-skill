@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+from pathlib import Path
 
 
 def _teeth(value):
@@ -71,7 +72,7 @@ def open_belt_layout(driver_teeth, driven_teeth, belt_teeth, pitch_mm):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("spur", "belt"):
+    for command in ("spur", "belt", "belt-solid"):
         entry = commands.add_parser(command)
         entry.add_argument("driver", type=int)
         entry.add_argument("driven", type=int)
@@ -80,16 +81,35 @@ def main():
         else:
             entry.add_argument("--belt-teeth", type=int, required=True)
             entry.add_argument("--pitch-mm", type=float, required=True)
+        if command == "belt-solid":
+            entry.add_argument("--width-mm", type=float, required=True)
+            entry.add_argument("--backing-thickness-mm", type=float, required=True)
+            entry.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.command == "spur":
             result = spur_layout(args.driver, args.driven, args.dp)
+        elif args.command == "belt-solid":
+            from belt_geometry import build_open_belt
+
+            if args.output.suffix.lower() not in (".step", ".stp"):
+                raise ValueError("Belt solid output must end in .step or .stp")
+            model = build_open_belt(
+                args.driver, args.driven, args.belt_teeth, args.pitch_mm,
+                args.width_mm, args.backing_thickness_mm,
+            )
+            model["solid"].exportStep(str(args.output))
+            result = {
+                **model["layout"],
+                "volume_mm3": model["solid"].Volume(),
+                "step_file": str(args.output),
+            }
         else:
             result = open_belt_layout(
                 args.driver, args.driven, args.belt_teeth, args.pitch_mm
             )
         print(json.dumps(result, indent=2, allow_nan=False))
-    except (ValueError, OverflowError) as error:
+    except (ValueError, OverflowError, RuntimeError) as error:
         parser.error(str(error))
 
 
