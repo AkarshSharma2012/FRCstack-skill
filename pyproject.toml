@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frcstack"
+version = "0.2.0"
+description = "All-in-one FIRST (FRC/FTC) and VEX robotics toolkit: verified CAD, video scouting, and evidence-backed team queries."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26",
+  "openpyxl>=3.1.5,<4",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+# CPU-friendly video pipeline. OpenVINO targets Intel CPUs and Iris Xe iGPUs.
+vision = [
+  "opencv-python-headless>=4.9",
+  "openvino>=2024.0",
+  "yt-dlp>=2024.1",
+]
+cad = ["cadquery==2.8.0"]
+
+[project.scripts]
+frcstack = "frcstack.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
